@@ -6,7 +6,6 @@
 # +7, +7, -2, -7, -4 first reaches 14 twice.
 # What is the first frequency your device reaches twice?
 
-file = File.open("p1_2.txt")
 
 def find_dup(list)
   seen = { 0 => true }
@@ -22,6 +21,9 @@ def find_dup(list)
   end
 end  
 
-puts find_dup(file.readlines)
+if __FILE__ == $0
+  file = File.open("p1_2.txt")
+  puts find_dup(file.readlines)
+end
 #puts find_dup(["+1", "-1"])
 #puts find_dup(["+3", "+3", "+4", "-2", "-4"])
