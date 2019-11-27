@@ -8,10 +8,12 @@ require 'rspec'
 # +7, +7, -2, -7, -4 first reaches 14 twice.
 
 describe 'find_dup' do
-  let(:test1) { ["+1", "-1"] }
-  let(:test2) { ["+3", "+3", "+4", "-2", "-4"] }
-  let(:test3) { ["-6", "+3", "+8", "+5", "-6"] }
-  let(:test4) { ["+7", "+7", "-2", "-7", "-4"] }
+  all_tests =
+    { test1: {example: ["+1", "-1"], answer: 0},
+      test2: {example: ["+3", "+3", "+4", "-2", "-4"], answer: 10},
+      test3: {example: ["-6", "+3", "+8", "+5", "-6"], answer: 5},
+      test4: {example: ["+7", "+7", "-2", "-7", "-4"], answer: 14},
+    }
 
   subject { find_dup(this_case) }
 
@@ -21,33 +23,13 @@ describe 'find_dup' do
       expect(subject).to eq answer
     end
   end
-  
-  context "test1" do
-    it_behaves_like "regular tests" do
-      let(:this_case) { test1 }
-      let(:answer) { 0 }
+
+  all_tests.each do |k, v|
+    context k do
+      it_behaves_like "regular tests" do
+        let(:this_case) { v[:example] }
+        let(:answer) { v[:answer] }
+      end
     end
   end
-
-  context "test2" do
-    it_behaves_like "regular tests" do
-      let(:this_case) { test2 }
-      let(:answer) { 10 }
-    end
-  end
-
-  context "test3" do
-    it_behaves_like "regular tests" do
-      let(:this_case) { test3 }
-      let(:answer) { 5 }
-    end
-  end
-
-  context "test4" do
-    it_behaves_like "regular tests" do
-      let(:this_case) { test4 }
-      let(:answer) { 14 }
-    end
-  end
-
 end
