@@ -1,6 +1,16 @@
 #!/usr/bin/env ruby
 
-puts DATA.readlines.map { |x| (x.to_i / 3) - 2 }.reduce(0) { |sum, x| sum + x }
+def fuel_cost(x)
+  step = (x / 3) - 2
+  return 0 if step < 0
+  return step + fuel_cost(step)
+end
+
+input = DATA.readlines
+part1 = input.map { |x| (x.to_i / 3) - 2 }.reduce(0) { |sum, x| sum + x }
+puts "part 1: #{part1}"
+part2 = input.map { |x| fuel_cost(x.to_i) }.reduce(0) { |sum, x| sum + x }
+puts "part 2: #{part2}"
 
 __END__
 121165
