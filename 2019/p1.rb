@@ -6,11 +6,14 @@ def fuel_cost(x)
   return step + fuel_cost(step)
 end
 
-input = DATA.readlines
-part1 = input.map { |x| (x.to_i / 3) - 2 }.reduce(:+)
-puts "part 1: #{part1}"
-part2 = input.map { |x| fuel_cost(x.to_i) }.reduce(:+)
-puts "part 2: #{part2}"
+if __FILE__ == $0
+  input = DATA.readlines
+  part1 = input.reduce(0) { |sum, item| sum + (item.to_i / 3) - 2 }
+  puts "part 1: #{part1}"
+
+  part2 = input.reduce(0) { |sum, x| sum + fuel_cost(x.to_i) }
+  puts "part 2: #{part2}"
+end
 
 __END__
 121165
