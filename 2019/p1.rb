@@ -7,9 +7,9 @@ def fuel_cost(x)
 end
 
 input = DATA.readlines
-part1 = input.map { |x| (x.to_i / 3) - 2 }.reduce(0) { |sum, x| sum + x }
+part1 = input.map { |x| (x.to_i / 3) - 2 }.reduce(:+)
 puts "part 1: #{part1}"
-part2 = input.map { |x| fuel_cost(x.to_i) }.reduce(0) { |sum, x| sum + x }
+part2 = input.map { |x| fuel_cost(x.to_i) }.reduce(:+)
 puts "part 2: #{part2}"
 
 __END__
