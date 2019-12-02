@@ -8,14 +8,46 @@ OPCODES = { 1 => {name: :add,
                  size: 1}
           }.freeze
 
+class Funcs
+  class << self
+    def add(mem, first, second, dest)
+      mem[dest] = mem[first] + mem[second]
+    end
+
+    def mult(mem, first, second, dest)
+      mem[dest] = mem[first] * mem[second]
+    end
+  end
+end
 
 def run(input)
-  nil
+  ip = 0
+  loop do
+    incr = do_instr(ip, input)
+    if incr == 0
+      return input
+    else
+      ip += incr
+    end
+  end
+end
+
+def do_instr(ip, input)
+  op_num = input[ip]
+  raise "invalid instruction" unless OPCODES.keys.include? op_num
+  return 0 if op_num == 99
+  op = OPCODES[op_num]
+  args = input[ip + 1, op[:size] - 1]
+  puts ">> IP: #{ip}   OP: #{op[:name]}  args: #{args}"
+  Funcs.send(op[:name],
+             input,
+             *args)
+  return op[:size]
 end
 
 if __FILE__ == $0
   program = DATA.readlines[0].split(',').map(&:to_i)
-  output = run(program)
+  output = run(program.dup)
   puts "part 1: position 0 result is: #{output[0]}"
 end
 
