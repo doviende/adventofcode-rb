@@ -38,17 +38,44 @@ def do_instr(ip, input)
   return 0 if op_num == 99
   op = OPCODES[op_num]
   args = input[ip + 1, op[:size] - 1]
-  puts ">> IP: #{ip}   OP: #{op[:name]}  args: #{args}"
+  # puts ">> IP: #{ip}   OP: #{op[:name]}  args: #{args}"
   Funcs.send(op[:name],
              input,
              *args)
   return op[:size]
 end
 
+#part 2
+# need to run the program on a whole bunch of pairs of numbers that go at 1 and 2
+# find the inputs that give the output 19690720
+
+def part2(program)
+  special = 19690720
+  (0..99).to_a.repeated_permutation(2).each do |noun, verb|
+    input = program.dup
+    input[1] = noun
+    input[2] = verb
+
+    output = run(input)
+    puts "noun = #{noun}, verb = #{verb}, output = #{output[0]}"
+    if output[0] == special
+      return [noun, verb]
+    end
+  end
+  puts "fuck"
+  return [-1, -1]
+end
+
 if __FILE__ == $0
   program = DATA.readlines[0].split(',').map(&:to_i)
+  program[1] = 12
+  program[2] = 2
+  program.freeze
   output = run(program.dup)
   puts "part 1: position 0 result is: #{output[0]}"
+
+  noun, verb = part2(program)
+  puts "part 2: 100 * #{noun} + #{verb} = #{100 * noun + verb}"
 end
 
 __END__
