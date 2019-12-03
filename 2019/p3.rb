@@ -78,20 +78,20 @@ def part2(wire1, wire2)
   covered = {} # keys = [x,y], value = num times covered
   mark2(covered, wire1.split(','), "A")
   mark2(covered, wire2.split(','), "B")
-  intersections = covered.select do |k, v|
-    data = v.map { |k2,v2| nil }
-
-  end
+  intersections = covered.select { |k, v| !v["A"].nil? && !v["B"].nil? }
   puts "intersections: #{intersections}"
   puts "distances: #{intersections.map { |k, v| [k[0], k[1], k[0].abs + k[1].abs] }}"
-  answer = intersections.map { |k, v| k[0].abs + k[1].abs }.sort.shift
+  answer = intersections.map { |k, v| v["A"] + v["B"] }.sort.shift
   return answer
 end
 
 if __FILE__ == $0
   input = DATA.readlines
-  answer = main(input[0], input[1])
+  answer = part1(input[0], input[1])
   puts "part 1: manhattan distance #{answer}"
+
+  answer = part2(input[0], input[1])
+  puts "part 2: least sum of distances to intersection was #{answer}"
 end
 
 __END__
