@@ -16,20 +16,20 @@ OPCODES = { 1 => {name: :add,
 class Funcs
   class << self
     def add(mem, first, second, dest)
-      mem[dest.get] = first.get + second.get
+      mem[dest.value] = first.get + second.get
     end
 
     def mult(mem, first, second, dest)
-      mem[dest.get] = first.get * second.get
+      mem[dest.value] = first.get * second.get
     end
 
     def input(mem, dest)
       print "> "
-      mem[dest.get] = gets.chomp.to_i
+      mem[dest.value] = gets.chomp.to_i
     end
 
     def output(mem, first)
-      puts mem[first.get]
+      puts first.get
     end
   end
 end
@@ -47,7 +47,6 @@ def run(input)
 end
 
 def do_instr(ip, input)
-  binding.pry
   op_value = input[ip]
   modes, opcode = parse_opvalue(op_value)
   raise "IP: #{ip} | invalid instruction #{opcode}" unless OPCODES.keys.include? opcode
