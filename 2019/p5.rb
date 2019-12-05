@@ -1,13 +1,14 @@
 #!/usr/bin/env ruby
+require 'pry'
 
 OPCODES = { 1 => {name: :add,
                   size: 4},
             2 => {name: :mult,
                   size: 4},
             3 => {name: :input,
-                  size: 3},
+                  size: 2},
             4 => {name: :output,
-                  size: 3},
+                  size: 2},
             99 => {name: :halt,
                  size: 1}
           }.freeze
@@ -15,11 +16,20 @@ OPCODES = { 1 => {name: :add,
 class Funcs
   class << self
     def add(mem, first, second, dest)
-      mem[dest] = mem[first] + mem[second]
+      mem[dest.get] = first.get + second.get
     end
 
     def mult(mem, first, second, dest)
-      mem[dest] = mem[first] * mem[second]
+      mem[dest.get] = first.get * second.get
+    end
+
+    def input(mem, dest)
+      print "> "
+      mem[dest.get] = gets.chomp.to_i
+    end
+
+    def output(mem, first)
+      puts mem[first.get]
     end
   end
 end
@@ -37,29 +47,62 @@ def run(input)
 end
 
 def do_instr(ip, input)
-  op_num = input[ip]
-  raise "invalid instruction" unless OPCODES.keys.include? op_num
-  return 0 if op_num == 99
-  op = OPCODES[op_num]
+  binding.pry
+  op_value = input[ip]
+  modes, opcode = parse_opvalue(op_value)
+  raise "IP: #{ip} | invalid instruction #{opcode}" unless OPCODES.keys.include? opcode
+  return 0 if opcode == 99
+  op = OPCODES[opcode]
   args = input[ip + 1, op[:size] - 1]
-  # puts ">> IP: #{ip}   OP: #{op[:name]}  args: #{args}"
+  # pad modes with zero
+  modes = modes + [0] * (args.size - modes.size)
+  parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, input) }
   Funcs.send(op[:name],
              input,
-             *args)
+             *parameter_args)
   return op[:size]
+end
+
+def parse_opvalue(op)
+  # given an integer op, separate it into parameter modes and an opcode
+  # return a list of the parameter modes and the op code
+  dig = op.digits.reverse
+  opcode = (dig.pop(2) * '').to_i
+  modes = dig.reverse
+  return [modes, opcode]
 end
 
 class Parameter
   # each Parameter has a mode and a value.
-  attr_accessor :mode, :value
-  def initialize(mode, value)
+  attr_accessor :mode, :value, :mem
+
+  class BadModeException < Exception
+  end
+
+  VALID_MODES = {
+    0 => :position,
+    1 => :immediate,
+  }
+
+  def initialize(mode, value, mem)
     self.mode = mode
+    raise BadModeException unless VALID_MODES.keys.include? mode
     self.value = value
+    # mem will probably be modified by instructions.
+    self.mem = mem
+  end
+
+  def get
+    # use the mode to dereference this parameter to its actual value
+    return value if VALID_MODES[mode] == :immediate
+    # positional parameter, inside mem:
+    mem[value]
   end
 end
 
 if __FILE__ == $0
-  program = DATA.readlines[0].split(',').map(&:to_i)
+  program = DATA.readlines[0].split(',').map(&:to_i).freeze
+  output = run(program.dup)
 end
 
 __END__
