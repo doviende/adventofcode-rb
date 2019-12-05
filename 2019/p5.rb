@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require 'pry'
 
+# size is for opcode plus args, to advance the instruction pointer
 OPCODES = { 1 => {name: :add,
                   size: 4},
             2 => {name: :mult,
@@ -9,6 +10,14 @@ OPCODES = { 1 => {name: :add,
                   size: 2},
             4 => {name: :output,
                   size: 2},
+            5 => {name: :jump_if_true,
+                  size: 3},
+            6 => {name: :jump_if_false,
+                  size: 3},
+            7 => {name: :less_than,
+                  size: 4},
+            8 => {name: :equals,
+                  size: 4},
             99 => {name: :halt,
                  size: 1}
           }.freeze
@@ -17,19 +26,48 @@ class Funcs
   class << self
     def add(mem, first, second, dest)
       mem[dest.value] = first.get + second.get
+      nil
     end
 
     def mult(mem, first, second, dest)
       mem[dest.value] = first.get * second.get
+      nil
     end
 
     def input(mem, dest)
       print "> "
       mem[dest.value] = gets.chomp.to_i
+      puts
+      nil
     end
 
     def output(mem, first)
       puts first.get
+      nil
+    end
+
+    def jump_if_true(mem, cmp, dest)
+      if cmp.get != 0
+        return dest.get
+      end
+      nil
+    end
+
+    def jump_if_false(mem, cmp, dest)
+      if cmp.get == 0
+        return dest.get
+      end
+      nil
+    end
+
+    def less_than(mem, first, second, result)
+      mem[result.value] = (first.get < second.get) ? 1 : 0
+      nil
+    end
+
+    def equals(mem, first, second, result)
+      mem[result.value] = (first.get == second.get) ? 1 : 0
+      nil
     end
   end
 end
@@ -37,11 +75,12 @@ end
 def run(input)
   ip = 0
   loop do
-    incr = do_instr(ip, input)
-    if incr == 0
+    new_ip = do_instr(ip, input)
+    if new_ip.nil?
       return input
     else
-      ip += incr
+      raise "invalid address: can't set ip to #{new_ip}" if new_ip >= input.size
+      ip = new_ip
     end
   end
 end
@@ -50,16 +89,21 @@ def do_instr(ip, input)
   op_value = input[ip]
   modes, opcode = parse_opvalue(op_value)
   raise "IP: #{ip} | invalid instruction #{opcode}" unless OPCODES.keys.include? opcode
-  return 0 if opcode == 99
+  return nil if opcode == 99
   op = OPCODES[opcode]
   args = input[ip + 1, op[:size] - 1]
   # pad modes with zero
   modes = modes + [0] * (args.size - modes.size)
   parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, input) }
-  Funcs.send(op[:name],
-             input,
-             *parameter_args)
-  return op[:size]
+  puts "DEBUG: IP: #{ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
+  new_ip = Funcs.send(op[:name],
+                      input,
+                      *parameter_args)
+  if new_ip.nil?
+    # just increment normally, instruction did not jump
+    return ip + op[:size]
+  end
+  return new_ip
 end
 
 def parse_opvalue(op)
