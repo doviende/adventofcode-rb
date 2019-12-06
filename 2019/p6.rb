@@ -1,9 +1,55 @@
 #!/usr/bin/env ruby
 
+require 'pry'
 
+class Tree
+  attr_accessor :all_nodes, :root
+  
+  def initialize(list_of_connections)
+    # list of connections is a whole bunch of pairs of [parent, child]
+    # possibly many for the same parent.
+    all_nodes = {}
+    list_of_connections.each do |parent, child|
+      node = all_nodes.fetch(parent, TreeNode.new(parent))
+      if parent == "COM"
+        @root = node
+      end
+      all_nodes[parent] ||= node
+      child_node = all_nodes.fetch(child, TreeNode.new(child))
+      all_nodes[child] ||= child_node
+      node.add_child(child_node)
+    end
+  end
+
+  def sum_of_depths(head=root, depth=0)
+    if head.children.nil? || head.children.empty?
+      puts "#{head.id} had no children, returning depth = #{depth}"
+      return depth
+    end
+    depth_sum = head.children.reduce(0) do |sum, child_node|
+      sum + sum_of_depths(child_node, depth+1)
+    end
+    puts "#{head.id} had children #{head.children.map { |x| x.id }}, summed to #{depth_sum}"
+    depth + depth_sum
+  end
+end
+
+class TreeNode
+  attr_accessor :id, :children
+  
+  def initialize(id)
+    @id = id
+    @children = []
+  end
+
+  def add_child(child_node)
+    @children << child_node
+  end
+end
 
 if __FILE__ == $0
-  sum_of_depths(DATA.readlines.map { |x| x.split(')') } )
+  sum = Tree.new(DATA.readlines.map { |x| x.chomp.split(')') } ).sum_of_depths
+  puts "part 1: #{sum}"
 end
 
 __END__
