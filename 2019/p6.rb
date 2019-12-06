@@ -8,15 +8,15 @@ class Tree
   def initialize(list_of_connections)
     # list of connections is a whole bunch of pairs of [parent, child]
     # possibly many for the same parent.
-    all_nodes = {}
+    @all_nodes = {}
     list_of_connections.each do |parent, child|
-      node = all_nodes.fetch(parent, TreeNode.new(parent))
+      node = @all_nodes.fetch(parent, TreeNode.new(parent))
       if parent == "COM"
         @root = node
       end
-      all_nodes[parent] ||= node
-      child_node = all_nodes.fetch(child, TreeNode.new(child, node))
-      all_nodes[child] ||= child_node
+      @all_nodes[parent] ||= node
+      child_node = @all_nodes.fetch(child, TreeNode.new(child, node))
+      @all_nodes[child] ||= child_node
       node.add_child(child_node)
     end
   end
@@ -31,6 +31,15 @@ class Tree
     end
     puts "#{head.id} had children #{head.children.map { |x| x.id }}, summed to #{depth_sum}"
     depth + depth_sum
+  end
+
+  def distance_between(name_A, name_B)
+    node_A = all_nodes[name_A]
+    raise "node not found: #{name_A}" if node_A.nil?
+    node_B = all_nodes[name_B]
+    raise "node not found: #{name_B}" if node_B.nil?
+    common_ancestor = node_A.ancestors.zip(node_B.ancestors).select { |a, b| a.id == b.id }.map { |a,b| a }.pop
+    return node_A.distance_up_to(common_ancestor) + node_B.distance_up_to(common_ancestor)
   end
 end
 
@@ -49,11 +58,31 @@ class TreeNode
     end
     @children << child_node
   end
+
+  def ancestors(accum = [])
+    if parent.nil?
+      return [] + accum
+    end
+    parent.ancestors([parent] + accum)
+  end
+
+  def distance_up_to(ancestor_node)
+    if parent.nil?
+      raise "did not find ancestor #{ancestor.id} after reaching root #{node.id}"
+    end
+    if parent.id == ancestor_node.id
+      return 0
+    end
+    1 + parent.distance_up_to(ancestor_node)
+  end
 end
 
 if __FILE__ == $0
-  sum = Tree.new(DATA.readlines.map { |x| x.chomp.split(')') } ).sum_of_depths
+  mytree = Tree.new(DATA.readlines.map { |x| x.chomp.split(')') } )
+  sum = mytree.sum_of_depths
   puts "part 1: #{sum}"
+  santa_dist = mytree.distance_between("SAN", "YOU")
+  puts "part 2: #{santa_dist}"
 end
 
 __END__
