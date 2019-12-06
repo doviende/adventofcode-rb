@@ -15,7 +15,7 @@ class Tree
         @root = node
       end
       all_nodes[parent] ||= node
-      child_node = all_nodes.fetch(child, TreeNode.new(child))
+      child_node = all_nodes.fetch(child, TreeNode.new(child, node))
       all_nodes[child] ||= child_node
       node.add_child(child_node)
     end
@@ -35,14 +35,18 @@ class Tree
 end
 
 class TreeNode
-  attr_accessor :id, :children
+  attr_accessor :id, :children, :parent
   
-  def initialize(id)
+  def initialize(id, parent_node=nil)
     @id = id
     @children = []
+    @parent = parent_node
   end
 
   def add_child(child_node)
+    if child_node.parent.nil?
+      child_node.parent = self
+    end
     @children << child_node
   end
 end
