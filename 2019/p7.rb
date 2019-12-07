@@ -6,20 +6,18 @@ def run_with_phases(program, phases)
   $stderr.puts("\nrun_with_phases #{phases}\n")
   num_procs = phases.size
   # purposely one extra here
-  iostreams = (0 .. num_procs).map { |x| StringIO.new }
+  iostreams = (0 .. num_procs).map { |x| IO.pipe }
   machines = (0 .. num_procs - 1).map do |x|
-    IntcodeMachine.new(program.dup, iostreams[x], iostreams[x+1])
+    IntcodeMachine.new(program.dup, iostreams[x][0], iostreams[x+1][1])
   end
   # seed phases in input
-  phases.each_with_index { |p, i| iostreams[i].puts(p) }
-  iostreams[0].puts(0)
+  phases.each_with_index { |p, i| iostreams[i][1].puts(p) }
+  iostreams[0][1].puts(0)
   machines.each_with_index do |m, i|
-    iostreams[i].rewind
     $stderr.puts "\nStarting machine #{i}..."
     m.run
   end
-  iostreams[num_procs].rewind
-  answer = iostreams[num_procs].gets.chomp.to_i
+  answer = iostreams[num_procs][0].gets.chomp.to_i
   $stderr.puts "\nlast machine output: #{answer}"
   answer
 end
