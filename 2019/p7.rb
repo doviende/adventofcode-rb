@@ -25,7 +25,7 @@ def run_with_phases(program, phases)
 end
 
 def run_all_phases(program)
-  answers = (0..4).to_a.repeated_permutation(5).to_a.map { |arr| run_with_phases(program, arr) }
+  answers = (0..4).to_a.permutation(5).to_a.map { |arr| run_with_phases(program, arr) }
   answers.max
 end
 
