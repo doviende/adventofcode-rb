@@ -32,6 +32,10 @@ if __FILE__ == $0
   reduced = do_react(sequence.dup)*''
   $stderr.puts reduced
   puts "\npart 1: #{reduced.size}"
+
+  letters = sequence.uniq
+  best = letters.uniq.map { |letter| do_react(sequence.select { |x| x.upcase != letter.upcase }).size }.min
+  puts "\npart 2: #{best}"
 end
 
 
