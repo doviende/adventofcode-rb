@@ -22,7 +22,7 @@ class IntcodeMachine
                      size: 1}
             }.freeze
 
-  attr_accessors :program, :ip, :instream, :outstream, :funcs
+  attr_accessor :program, :ip, :instream, :outstream, :funcs
   
   def initialize(program, instream=$stdin, outstream=$stdout)
     @program = program
@@ -33,11 +33,11 @@ class IntcodeMachine
   end
   
   class Funcs
-    attr_accessor :in, :out
+    attr_accessor :ins, :outs
     
     def initialize(in_io, out_io)
-      @in = in_io
-      @out = out_io
+      @ins = in_io
+      @outs = out_io
     end
     
     def add(mem, first, second, dest)
@@ -51,14 +51,14 @@ class IntcodeMachine
     end
 
     def input(mem, dest)
-      print "> "
-      mem[dest.value] = in.gets.chomp.to_i
-      puts
+      # print "> "
+      mem[dest.value] = ins.gets.chomp.to_i
+      $stderr.puts "DEBUG: received input: #{mem[dest.value]}"
       nil
     end
 
     def output(mem, first)
-      out.puts first.get
+      outs.puts first.get
       nil
     end
 
@@ -88,14 +88,14 @@ class IntcodeMachine
   end
 
   def run
-    ip = 0
+    @ip = 0
     loop do
       new_ip = do_instr()
       if new_ip.nil?
         return program
       else
         raise "invalid address: can't set ip to #{new_ip}" if new_ip >= program.size
-        ip = new_ip
+        @ip = new_ip
       end
     end
   end
@@ -103,27 +103,27 @@ class IntcodeMachine
   private
   
   def do_instr
-    op_value = program[ip]
+    op_value = @program[@ip]
     modes, opcode = parse_opvalue(op_value)
     raise "IP: #{ip} | invalid instruction #{opcode}" unless OPCODES.keys.include? opcode
     return nil if opcode == 99
     op = OPCODES[opcode]
-    args = program[ip + 1, op[:size] - 1]
+    args = @program[@ip + 1, op[:size] - 1]
     # pad modes with zero
     modes = modes + [0] * (args.size - modes.size)
-    parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, program) }
-    $stderr.puts "DEBUG: IP: #{ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
+    parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, @program) }
+    $stderr.puts "DEBUG: IP: #{@ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
     new_ip = funcs.send(op[:name],
-                        program,
+                        @program,
                         *parameter_args)
     if new_ip.nil?
       # just increment normally, instruction did not jump
-      return ip + op[:size]
+      return @ip + op[:size]
     end
     return new_ip
   end
 
-  def self.parse_opvalue(op)
+  def parse_opvalue(op)
     # given an integer op, separate it into parameter modes and an opcode
     # return a list of the parameter modes and the op code
     dig = op.digits.reverse
