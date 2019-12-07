@@ -13,10 +13,12 @@ def run_with_phases(program, phases)
   # seed phases in input
   phases.each_with_index { |p, i| iostreams[i][1].puts(p) }
   iostreams[0][1].puts(0)
+  threads = []
   machines.each_with_index do |m, i|
     $stderr.puts "\nStarting machine #{i}..."
-    m.run
+    threads << Thread.new { m.run }
   end
+  threads.each(&:join)
   answer = iostreams[num_procs][0].gets.chomp.to_i
   $stderr.puts "\nlast machine output: #{answer}"
   answer
