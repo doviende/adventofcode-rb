@@ -18,7 +18,7 @@ class Graph
 
   def do_tasks
     order_list = []
-    @all_nodes.each { |k,v| v.done = false }
+    reset
     # grab a node from the top of the ready queue
     # add its children to the ready queue if all their parents are done already
     # sort, and then take the next one off the top
@@ -37,27 +37,37 @@ class Graph
     @all_nodes.select { |k,v| v.ready? }.sort.map { |k,v| v }.shift
   end
 
+  def reset
+    @all_nodes.each { |k,v| v.done = false; v.working = false }
+  end
+
   def done?
-    !@all_nodes.detect { |k,v| !v.done? }
+    @all_nodes.all? { |k,v| v.done? }
   end
 end
 
 class GraphNode
-  attr_accessor :id, :children, :parents, :done
+  attr_accessor :id, :children, :parents, :done, :working
 
   def initialize(id)
     @id = id
     @children = []
     @parents = []
     @done = false
+    @working = false
   end
 
   def done?
     @done
   end
 
+  def working?
+    @working
+  end
+
   def ready?
     return false if @done
+    return false if @working
     @parents.empty? || @parents.all? { |p| p.done? }
   end
 
@@ -72,13 +82,17 @@ class GraphNode
 end
 
 class Worker
-  def initialize
+  attr_accessor :id, :timer, :job
+  def initialize(id)
+    @id = id
     @timer = nil
+    @job = nil
   end
 
   def start(job)
     @timer = job.time
     @job = job
+    @job.working = true
   end
 
   def available?
@@ -90,16 +104,20 @@ class Worker
   end
 
   def tick!
-    @timer = max(0, @timer - 1) if !@timer.nil?
+    @timer = [0, @timer - 1].max if !@timer.nil?
   end
 end
 
 if __FILE__ == $0
+  $stdout.sync = true
+  $stderr.sync = true
   step_orders = DATA.readlines.map { |line| line.match(/Step (.).*before step (.)/).captures }
   graph = Graph.new(step_orders)
   order = graph.do_tasks
   puts "part 1: #{order}"
-  
+
+  # part 2
+  graph.reset
   worker_list = []
   5.times { |id| worker_list << Worker.new(id) }
   time = 0
@@ -110,12 +128,17 @@ if __FILE__ == $0
       w.job.done = true
       w.job = nil
     end
-    break if graph.done?
-    next_worker = worker_list.detect { |w| w.available? }
-    if !next_worker.nil?
-      next_worker.start graph.next_job
+    avail_workers = worker_list.select { |w| w.available? }
+    break if graph.done? && avail_workers.size == worker_list.size
+    avail_workers.each do |w|
+      j = graph.next_job
+      if !j.nil?
+        puts "assigning #{j.id} to #{w.id}"
+        w.start j
+      end
     end
     time += 1
+    puts "Tick!"
     worker_list.each { |w| w.tick! }
   end
   puts "part 2: completed in #{time} seconds"
