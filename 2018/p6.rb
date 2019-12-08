@@ -49,7 +49,21 @@ if __FILE__ == $0
   puts "part 1: #{answer}"
 
   # part 2
-  
+  # just try interior points
+  sums = {}
+  total = 0
+  BORDER_NUM = 10000
+  (xmin .. xmax).each do |x|
+    (ymin .. ymax).each do |y|
+      sums[[x,y]] = points_list.reduce(0) do |sum, po|
+        sum + manh([x,y], po)
+      end
+      if sums[[x,y]] < BORDER_NUM
+        total += 1
+      end
+    end
+  end
+  puts "part 2: #{total}"
 end
 
 
