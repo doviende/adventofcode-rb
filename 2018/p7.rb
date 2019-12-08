@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 class Graph
-  attr_accessor :all_nodes, :root
+  attr_accessor :all_nodes
 
   def initialize(list_of_connections)
     # list of connections is a whole bunch of pairs of [parent, child]
@@ -18,26 +18,23 @@ class Graph
 
   def do_tasks
     order_list = []
-    ready_queue = @all_nodes.sort.map { |k,v| v.done = false; v }.select { |v| v.ready? }
+    @all_nodes.each { |k,v| v.done = false }
     # grab a node from the top of the ready queue
     # add its children to the ready queue if all their parents are done already
     # sort, and then take the next one off the top
     $stderr.puts "all nodes: #{@all_nodes.map { |k,v| v.id }.sort*''}"
     loop do
-      $stderr.puts "options: #{ready_queue.map{|n| n.id}*''}"
-      next_node = ready_queue.shift
+      next_node = next_job
       order_list.push(next_node.id)
       next_node.done = true
       $stderr.puts "job #{next_node.id} done"
-      next_node.children.each do |n|
-        if n.ready?
-          ready_queue.push n
-        end
-      end
-      break if ready_queue.empty?
-      ready_queue = ready_queue.sort_by { |n| n.id }
+      break if order_list.size == @all_nodes.size
     end
     return order_list*''
+  end
+
+  def next_job
+    @all_nodes.select { |k,v| v.ready? }.sort.map { |k,v| v }.shift
   end
 end
 
@@ -56,6 +53,7 @@ class GraphNode
   end
 
   def ready?
+    return false if @done
     @parents.empty? || @parents.all? { |p| p.done? }
   end
   
