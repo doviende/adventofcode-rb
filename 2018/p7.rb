@@ -36,6 +36,10 @@ class Graph
   def next_job
     @all_nodes.select { |k,v| v.ready? }.sort.map { |k,v| v }.shift
   end
+
+  def done?
+    !@all_nodes.detect { |k,v| !v.done? }
+  end
 end
 
 class GraphNode
@@ -56,10 +60,37 @@ class GraphNode
     return false if @done
     @parents.empty? || @parents.all? { |p| p.done? }
   end
+
+  def time
+    return @id.ord - 4
+  end
   
   def add_child(child_node)
     child_node.parents << self
     @children << child_node
+  end
+end
+
+class Worker
+  def initialize
+    @timer = nil
+  end
+
+  def start(job)
+    @timer = job.time
+    @job = job
+  end
+
+  def available?
+    @timer.nil?
+  end
+
+  def done?
+    @timer == 0
+  end
+
+  def tick!
+    @timer = max(0, @timer - 1) if !@timer.nil?
   end
 end
 
@@ -68,6 +99,26 @@ if __FILE__ == $0
   graph = Graph.new(step_orders)
   order = graph.do_tasks
   puts "part 1: #{order}"
+  
+  worker_list = []
+  5.times { |id| worker_list << Worker.new(id) }
+  time = 0
+  loop do
+    worker_list.select { |w| w.done? }.each do |w|
+      w.timer = nil
+      $stderr.puts "worker #{w.id} finished #{w.job.id}"
+      w.job.done = true
+      w.job = nil
+    end
+    break if graph.done?
+    next_worker = worker_list.detect { |w| w.available? }
+    if !next_worker.nil?
+      next_worker.start graph.next_job
+    end
+    time += 1
+    worker_list.each { |w| w.tick! }
+  end
+  puts "part 2: completed in #{time} seconds"
 end
 
 __END__
