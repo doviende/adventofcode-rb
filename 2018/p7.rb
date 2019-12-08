@@ -1,7 +1,75 @@
 #!/usr/bin/env ruby
 
-if __FILE__ == $0
+class Graph
+  attr_accessor :all_nodes, :root
+
+  def initialize(list_of_connections)
+    # list of connections is a whole bunch of pairs of [parent, child]
+    # possibly many for the same parent.
+    @all_nodes = {}
+    list_of_connections.each do |parent, child|
+      node = @all_nodes.fetch(parent, GraphNode.new(parent))
+      @all_nodes[parent] ||= node
+      child_node = @all_nodes.fetch(child, GraphNode.new(child))
+      @all_nodes[child] ||= child_node
+      node.add_child(child_node)
+    end
+  end
+
+  def do_tasks
+    order_list = []
+    ready_queue = @all_nodes.sort.map { |k,v| v.done = false; v }.select { |v| v.ready? }
+    # grab a node from the top of the ready queue
+    # add its children to the ready queue if all their parents are done already
+    # sort, and then take the next one off the top
+    $stderr.puts "all nodes: #{@all_nodes.map { |k,v| v.id }.sort*''}"
+    loop do
+      $stderr.puts "options: #{ready_queue.map{|n| n.id}*''}"
+      next_node = ready_queue.shift
+      order_list.push(next_node.id)
+      next_node.done = true
+      $stderr.puts "job #{next_node.id} done"
+      next_node.children.each do |n|
+        if n.ready?
+          ready_queue.push n
+        end
+      end
+      break if ready_queue.empty?
+      ready_queue = ready_queue.sort_by { |n| n.id }
+    end
+    return order_list*''
+  end
+end
+
+class GraphNode
+  attr_accessor :id, :children, :parents, :done
+
+  def initialize(id)
+    @id = id
+    @children = []
+    @parents = []
+    @done = false
+  end
+
+  def done?
+    @done
+  end
+
+  def ready?
+    @parents.empty? || @parents.all? { |p| p.done? }
+  end
   
+  def add_child(child_node)
+    child_node.parents << self
+    @children << child_node
+  end
+end
+
+if __FILE__ == $0
+  step_orders = DATA.readlines.map { |line| line.match(/Step (.).*before step (.)/).captures }
+  graph = Graph.new(step_orders)
+  order = graph.do_tasks
+  puts "part 1: #{order}"
 end
 
 __END__
