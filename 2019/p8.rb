@@ -9,6 +9,15 @@ if __FILE__ == $0
   least_layer = layer_image.each.with_index.sort_by { |layer, i| layer.count {|x| x=="0"} }.shift.first
   answer = least_layer.count { |x| x=="1" } * least_layer.count { |x| x=="2" }
   puts "answer: #{answer}"
+
+  # part 2
+  flat_image = layer_image.reduce(Array.new(image_size, nil)) do |accum, layer|
+    layer.map(&:to_i).each_with_index do |pixel, i|
+      accum[i] ||= pixel if pixel < 2
+    end
+    accum
+  end
+  flat_image.each_slice(25) { |row| puts (row.map{|x| x==1 ? "M" : "."})*'' }
 end
 
 __END__
