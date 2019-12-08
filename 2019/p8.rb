@@ -1,15 +1,13 @@
 #!/usr/bin/env ruby
 
-def num_char(list, char)
-  list.count { |x| x == char }
-end
-
 if __FILE__ == $0
-  image = DATA.readlines[0].chomp.chars
+  image = DATA.readlines[0].chomp.chars.freeze
   image_size = 25*6
+
+  # part 1
   layer_image = image.each_slice(image_size).to_a
-  least_layer = layer_image.each.with_index.sort_by { |layer, i| num_char(layer, "0") }.shift.first
-  answer = num_char(least_layer, "1") * num_char(least_layer, "2")
+  least_layer = layer_image.each.with_index.sort_by { |layer, i| layer.count {|x| x=="0"} }.shift.first
+  answer = least_layer.count { |x| x=="1" } * least_layer.count { |x| x=="2" }
   puts "answer: #{answer}"
 end
 
