@@ -1,7 +1,26 @@
 #!/usr/bin/env ruby
+require_relative "intcode"
 
-if __FILE__ == $0
+
+def run_program(program, input)
+  inpipe = IO.pipe
+  outpipe = IO.pipe
+  machine = IntcodeMachine.new(program, inpipe[0], outpipe[1])
+  inpipe[1].puts input
+  machine.run
+  outpipe[1].close_write
+  output = outpipe[0].readlines.last.chomp
+  output
+end
   
+if __FILE__ == $0
+  program = DATA.readlines[0].chomp
+  answer = run_program(program, "1")
+  puts "part 1: #{answer}"
+
+  # part 2
+  answer = run_program(program, "2")
+  puts "part 2: #{answer}"
 end
 
 __END__
