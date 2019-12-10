@@ -147,8 +147,12 @@ describe "2019 p10" do
         expect(subject).to eq [1, -1]
       end
     end
-     
-    
   end
-  
+
+  describe "Laser" do
+    let(:laser) { Laser.new }
+    context "sort orders" do
+      
+    end
+  end
 end

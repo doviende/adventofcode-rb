@@ -11,13 +11,19 @@ class Map
     @line_hash = {}
     @unzapped = nil
     @to_zap = nil
+    @zap_count = 0
     @laser = Laser.new
+    @best_spot = nil
   end
 
   def most_visible
     # return position and visible number for the best position
     # (ie the spot that sees the most asteroids)
     all_visible.sort_by { |loc, num| num }.pop
+  end
+
+  def best_spot
+    @best_spot ||= most_visible[0]
   end
 
   def all_visible
@@ -88,17 +94,54 @@ class Map
     # Then delete an element from the next slope and increment the zap counter.
     # Each zap drops a slope from the slope-list.
     # If there are no more elements to zap, we start a new circle by repopulating slope list.
-    @unzapped ||= aligned_hash(*most_visible[0])
-    @to_zap ||= []
-    @to_zap = sweep(@unzapped) if @to_zap.empty?
+    init_zapping
     # do a zap
     slope = @to_zap.shift
+    # $stderr.puts "zapping slope #{slope} = #{Float(slope[0])/slope[1]}"
     @unzapped[slope].shift
+    @zap_count += 1
   end
 
-  def sweep
+  def init_zapping
+    # starts from scratch and also re-sweeps
+    if @unzapped.nil?
+      @unzapped = aligned_hash(*best_spot)
+      @unzapped.each do |k,v|
+        # sort by distance from best_spot
+        @unzapped[k] = v.sort_by { |p| square_distance(p, best_spot) }
+      end
+    end
+    @to_zap ||= []
+    @to_zap = sweep(@unzapped) if @to_zap.empty?
+  end
+
+  def square_distance(p, spot)
+    (p[0] - spot[0])**2 + (p[1] - spot[1])**2
+  end
+
+  def next_zap
+    init_zapping
+    slope = @to_zap.first
+    @unzapped[slope].first
+  end
+
+  def sweep(remaining_asteroids)
     # don't add to list if that value is empty list.
-    []
+    # for each slope in the right order, have to grab the closest asteroid
+    # and add to zap list
+    # remaining_asteroids is a hash where the keys are slopes
+    # and the values are various asteroid coordinates.
+    slope_list = []
+    4.times do
+      slope_list << @laser.boundary if remaining_asteroids.keys.include? @laser.boundary
+      # next, get all slopes that match the sign of the quadrant
+      quadrant_list = remaining_asteroids.keys.select do |dy, dx|
+        dy != 0 && dx != 0 && ([dy/dy.abs, dx/dx.abs] == @laser.quadrant)
+      end.sort_by { |dy, dx| Float(dy)/dx }
+      slope_list += quadrant_list
+      @laser.next_quadrant!
+    end
+    slope_list
   end
 end
 
@@ -111,7 +154,6 @@ class Laser
     # boundary vector of [y, x] where one of them is zero
     @quadrants = [[-1, 1], [1, 1], [1, -1], [-1, -1]]
     @boundaries = [[-1, 0], [0, 1], [1, 0], [0, -1]]
-    @zap_count = 0
   end
 
   def quadrant
@@ -125,10 +167,6 @@ class Laser
   def next_quadrant!
     @quadrants.rotate!(1)
     @boundaries.rotate!(1)
-  end
-
-  def zap!
-    @zap_count += 1
   end
 end
 
