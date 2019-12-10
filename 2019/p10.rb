@@ -9,6 +9,9 @@ class Map
     # expects array of hashes and dots, one element per line
     @lines = map_lines.map { |line| line.chars.map { |x| x == '#' } }
     @line_hash = {}
+    @unzapped = nil
+    @to_zap = nil
+    @laser = Laser.new
   end
 
   def most_visible
@@ -77,6 +80,56 @@ class Map
     end
     aligned
   end
+
+  def zap!
+    # in the current quadrant, find the list of all the right slopes
+    # from the aligned hash and sort them in the right order. repeat over
+    # all quadrants so we have a slope list for a full sweep.
+    # Then delete an element from the next slope and increment the zap counter.
+    # Each zap drops a slope from the slope-list.
+    # If there are no more elements to zap, we start a new circle by repopulating slope list.
+    @unzapped ||= aligned_hash(*most_visible[0])
+    @to_zap ||= []
+    @to_zap = sweep(@unzapped) if @to_zap.empty?
+    # do a zap
+    slope = @to_zap.shift
+    @unzapped[slope].shift
+  end
+
+  def sweep
+    # don't add to list if that value is empty list.
+    []
+  end
+end
+
+class Laser
+  def initialize
+    # quadrant will be a pair of y, x designated by 1 or -1
+    # Rotation is clockwise in the original coordinates,
+    # so the quadrant order is [-1, 1], [1, 1], [1, -1], [-1, -1]
+    # Also have to track which boundary it starts on by giving a
+    # boundary vector of [y, x] where one of them is zero
+    @quadrants = [[-1, 1], [1, 1], [1, -1], [-1, -1]]
+    @boundaries = [[-1, 0], [0, 1], [1, 0], [0, -1]]
+    @zap_count = 0
+  end
+
+  def quadrant
+    @quadrants.first
+  end
+
+  def boundary
+    @boundaries.first
+  end
+
+  def next_quadrant!
+    @quadrants.rotate!(1)
+    @boundaries.rotate!(1)
+  end
+
+  def zap!
+    @zap_count += 1
+  end
 end
 
 class Slope
@@ -105,7 +158,7 @@ if __FILE__ == $0
   # rotation starts at -y, 0 and rotates through -y +x to 0 +x, etc.
   # for each quadrant, select that quadrant's asteroids in the hash, and (in order)
   # subtract 1 from each one. Keep going until the 200th zap.
-  map.zap!(199)
+  199.times { map.zap! }
   point = map.next_zap
   answer = 100*point[0] + point[1]
   puts "part 2: #{answer}"
