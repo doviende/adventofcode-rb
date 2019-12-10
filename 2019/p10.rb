@@ -55,7 +55,11 @@ class Map
     (0 .. max_y).each do |b|
       (0 .. max_x).each do |a|
         if [a, b] != [x, y]
-          aligned[Slope.new(a, b, x, y).as_pair] = 1 if asteroid(a, b)
+          slope = Slope.new(a, b, x, y).as_pair
+          #if aligned[slope]
+          #  $stderr.puts "already seen (#{a}, #{b}) at #{slope}"
+          #end
+          aligned[slope] = 1 if asteroid(a, b)
         end
       end
     end
@@ -66,17 +70,17 @@ end
 class Slope
   def initialize(a, b, x, y)
     # a-x, b-y
-    @dx = diff(a,x)
-    @dy = diff(b,y)
+    # $stderr.puts "comparing (#{a}, #{b}) to base (#{x}, #{y})"
+    @dx = a-x
+    @dy = b-y
+    @gcd = @dx.gcd(@dy)
+    if @dx == 0 && @dy == 0
+      @gcd = 1
+    end
   end
 
   def as_pair
-    [@dy, @dx]
-  end
-
-  def diff(a, b)
-    return 0 if a == 0 && b == 0
-    (a-b) / a.gcd(b)
+    [@dy/@gcd, @dx/@gcd]
   end
 end
 
