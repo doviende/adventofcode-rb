@@ -18,41 +18,48 @@ class IntcodeMachine
                     size: 4},
               8 => {name: :equals,
                     size: 4},
+              9 => {name: :change_relative_base,
+                    size: 2},
               99 => {name: :halt,
                      size: 1}
             }.freeze
 
-  attr_accessor :program, :ip, :instream, :outstream, :funcs
+  attr_accessor :program, :ip, :instream, :outstream, :funcs, :relative_base
   
   def initialize(program, instream=$stdin, outstream=$stdout)
+    if program.class == String
+      program = program.split(',').map(&:to_i)
+    end
     @program = program
     @instream = instream
     @outstream = outstream
     @ip = 0
-    @funcs = Funcs.new(@instream, @outstream)
+    @funcs = Funcs.new(self)
+    @relative_base = 0
   end
   
   class Funcs
     attr_accessor :ins, :outs
     
-    def initialize(in_io, out_io)
-      @ins = in_io
-      @outs = out_io
+    def initialize(machine)
+      @machine = machine
+      @ins = @machine.instream
+      @outs = @machine.outstream
     end
     
     def add(mem, first, second, dest)
-      mem[dest.value] = first.get + second.get
+      mem[dest.as_addr] = first.get + second.get
       nil
     end
     
     def mult(mem, first, second, dest)
-      mem[dest.value] = first.get * second.get
+      mem[dest.as_addr] = first.get * second.get
       nil
     end
 
     def input(mem, dest)
       # print "> "
-      mem[dest.value] = ins.gets.chomp.to_i
+      mem[dest.as_addr] = ins.gets.chomp.to_i
       $stderr.puts "DEBUG: received input: #{mem[dest.value]}"
       nil
     end
@@ -77,12 +84,17 @@ class IntcodeMachine
     end
 
     def less_than(mem, first, second, result)
-      mem[result.value] = (first.get < second.get) ? 1 : 0
+      mem[result.as_addr] = (first.get < second.get) ? 1 : 0
       nil
     end
     
     def equals(mem, first, second, result)
-      mem[result.value] = (first.get == second.get) ? 1 : 0
+      mem[result.as_addr] = (first.get == second.get) ? 1 : 0
+      nil
+    end
+
+    def change_relative_base(mem, new_base)
+      @machine.relative_base += new_base.get
       nil
     end
   end
@@ -111,7 +123,7 @@ class IntcodeMachine
     args = @program[@ip + 1, op[:size] - 1]
     # pad modes with zero
     modes = modes + [0] * (args.size - modes.size)
-    parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, @program) }
+    parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, @program, @relative_base) }
     $stderr.puts "DEBUG: IP: #{@ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
     new_ip = funcs.send(op[:name],
                         @program,
@@ -143,20 +155,31 @@ class Parameter
   VALID_MODES = {
     0 => :position,
     1 => :immediate,
-  }
+    2 => :relative,
+  }.freeze
 
-  def initialize(mode, value, mem)
-    self.mode = mode
+  def initialize(mode, value, mem, relative_base=0)
+    @mode = mode
     raise BadModeException unless VALID_MODES.keys.include? mode
-    self.value = value
+    @value = value
     # mem will probably be modified by instructions.
-    self.mem = mem
+    @mem = mem
+    @relative_base = relative_base
   end
 
   def get
     # use the mode to dereference this parameter to its actual value
     return value if VALID_MODES[mode] == :immediate
     # positional parameter, inside mem:
-    mem[value]
+    relative = 0
+    if VALID_MODES[mode] == :relative
+      relative = @relative_base
+    end
+    mem.fetch(value + relative, 0)
+  end
+
+  def as_addr
+    return value + @relative_base if VALID_MODES[mode] == :relative
+    value
   end
 end
