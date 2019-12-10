@@ -51,6 +51,18 @@ class Map
     # Note: need to make sure the sign is correct so we don't mix
     # up the direction we're looking.
     return nil unless asteroid(x, y)
+    aligned = aligned_hash(x, y)
+    total = aligned.values.reduce(0) do |sum, slope_list|
+      if slope_list.size > 0
+        sum + 1
+      else
+        sum
+      end
+    end
+    total
+  end
+
+  def aligned_hash(x, y)
     aligned = Hash.new { |hash, key| hash[key] = [] }
     (0 .. max_y).each do |b|
       (0 .. max_x).each do |a|
@@ -63,14 +75,7 @@ class Map
         end
       end
     end
-    total = aligned.values.reduce(0) do |sum, slope_list|
-      if slope_list.size > 0
-        sum + 1
-      else
-        sum
-      end
-    end
-    total
+    aligned
   end
 end
 
