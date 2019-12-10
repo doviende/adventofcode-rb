@@ -51,7 +51,7 @@ class Map
     # Note: need to make sure the sign is correct so we don't mix
     # up the direction we're looking.
     return nil unless asteroid(x, y)
-    aligned = {}
+    aligned = Hash.new { |hash, key| hash[key] = [] }
     (0 .. max_y).each do |b|
       (0 .. max_x).each do |a|
         if [a, b] != [x, y]
@@ -59,11 +59,18 @@ class Map
           #if aligned[slope]
           #  $stderr.puts "already seen (#{a}, #{b}) at #{slope}"
           #end
-          aligned[slope] = 1 if asteroid(a, b)
+          aligned[slope] << [a, b] if asteroid(a, b)
         end
       end
     end
-    aligned.values.sum
+    total = aligned.values.reduce(0) do |sum, slope_list|
+      if slope_list.size > 0
+        sum + 1
+      else
+        sum
+      end
+    end
+    total
   end
 end
 
@@ -87,6 +94,16 @@ end
 if __FILE__ == $0
   map = Map.new(DATA.readlines(chomp: true))
   puts "part 1: #{map.most_visible[1]}"
+
+  # part 2
+  # Have to rotate around zapping asteroids one at a time, sheltered ones don't get hit.
+  # rotation starts at -y, 0 and rotates through -y +x to 0 +x, etc.
+  # for each quadrant, select that quadrant's asteroids in the hash, and (in order)
+  # subtract 1 from each one. Keep going until the 200th zap.
+  map.zap!(199)
+  point = map.next_zap
+  answer = 100*point[0] + point[1]
+  puts "part 2: #{answer}"
 end
 
 
