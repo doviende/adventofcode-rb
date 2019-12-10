@@ -2,30 +2,52 @@
 require_relative "../p10.rb"
 
 describe "2019 p10" do
-  let(:map) { Map.new(example) }
-  subject { map.most_visible }
+  describe "Map" do
+    let(:map1) { Map.new(example) }
+    subject { map1.most_visible }
 
-  context "example1" do
-    let(:example) do
-      ["......#.#.",
-       "#..#.#....",
-       "..#######.",
-       ".#.#.###..",
-       ".#..#.....",
-       "..#....#.#",
-       "#..#....#.",
-       ".##.#..###",
-       "##...#..#.",
-       ".#....####" ]
+    context "example1" do
+      let(:example) do
+        ["......#.#.",
+         "#..#.#....",
+         "..#######.",
+         ".#.#.###..",
+         ".#..#.....",
+         "..#....#.#",
+         "#..#....#.",
+         ".##.#..###",
+         "##...#..#.",
+         ".#....####" ]
+      end
+      let(:answer) { [[5,8], 33] }
+
+      it 'finds the best spot' do
+        expect(subject).to eq answer
+      end
     end
-    let(:answer) { [[5,8], 33] }
 
-    it 'finds the best spot' do
-      expect(subject).to eq answer
+    context "example2" do
+      let(:example) do
+        [ "#.#...#.#.",
+          ".###....#.",
+          ".#....#...",
+          "##.#.#.#.#",
+          "....#.#.#.",
+          ".##..###.#",
+          "..#...##..",
+          "..##....##",
+          "......#...",
+          ".####.###.", ]
+      end
+      let(:answer) { [[1,2], 35] }
+
+      it 'finds the best spot' do
+        expect(subject).to eq answer
+      end
     end
   end
 
-  context "Slope" do
+  describe "Slope" do
     subject { Slope.new(*args).as_pair }
     context "first" do
       let(:args) { [1,1,0,0] }

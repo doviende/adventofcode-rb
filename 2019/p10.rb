@@ -7,7 +7,7 @@
 class Map
   def initialize(map_lines)
     # expects array of hashes and dots, one element per line
-    @lines = map_lines.map { |line| line.chars.map { |x| x=='#' } }
+    @lines = map_lines.map { |line| line.chars.map { |x| x == '#' } }
     @line_hash = {}
   end
 
