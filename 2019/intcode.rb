@@ -26,16 +26,21 @@ class IntcodeMachine
 
   attr_accessor :program, :ip, :instream, :outstream, :funcs, :relative_base
   
-  def initialize(program, instream=$stdin, outstream=$stdout)
+  def initialize(program, instream=$stdin, outstream=$stdout, debug=$stderr)
     if program.class == String
       program = program.split(',').map(&:to_i)
     end
     @program = program
     @instream = instream
     @outstream = outstream
+    @dbgstream = debug
     @ip = 0
     @funcs = Funcs.new(self)
     @relative_base = 0
+  end
+
+  def debug(str)
+    @dbgstream.puts("DEBUG: #{str}") unless @dbgstream.nil?
   end
   
   class Funcs
@@ -60,7 +65,7 @@ class IntcodeMachine
     def input(mem, dest)
       # print "> "
       mem[dest.as_addr] = ins.gets.chomp.to_i
-      $stderr.puts "DEBUG: received input: #{mem[dest.value]}"
+      debug "received input: #{mem[dest.value]}"
       nil
     end
 
@@ -99,11 +104,16 @@ class IntcodeMachine
     end
   end
 
+  def close_output
+    @outstream.close_write
+  end
+
   def run
     @ip = 0
     loop do
       new_ip = do_instr()
       if new_ip.nil?
+        close_output
         return program
       else
         raise "invalid address: can't set ip to #{new_ip}" if new_ip >= program.size
@@ -124,7 +134,7 @@ class IntcodeMachine
     # pad modes with zero
     modes = modes + [0] * (args.size - modes.size)
     parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, @program, @relative_base) }
-    $stderr.puts "DEBUG: IP: #{@ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
+    debug "IP: #{@ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
     new_ip = funcs.send(op[:name],
                         @program,
                         *parameter_args)
