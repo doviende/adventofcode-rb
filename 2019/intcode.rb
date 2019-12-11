@@ -65,7 +65,7 @@ class IntcodeMachine
     def input(mem, dest)
       # print "> "
       mem[dest.as_addr] = ins.gets.chomp.to_i
-      debug "received input: #{mem[dest.value]}"
+      @machine.debug "received input: #{mem[dest.value]}"
       nil
     end
 
