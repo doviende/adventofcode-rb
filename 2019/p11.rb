@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# coding: utf-8
 
 # turtle-bot - intcode machine for a brain, and it moves 1 square
 # ahead every turn. the brain tells it whether to turn left or right,
@@ -36,13 +37,50 @@ class TurtleBot
     @floor_color = Hash.new { |hash, key| hash[key] = Paint::BLACK }  # default black color
   end
 
+  def start_color=(c)
+    # expects Paint::BLACK or Paint::WHITE
+    @floor_color[@curr_pos] = c
+  end
+
+  def positions
+    @pos_list
+  end
+
+  def run
+    @brain_thread = Thread.new { @brain.run }
+    loop do
+      write(@floor_color[@curr_pos])
+      new_floor = read
+      break if new_floor.nil?  # intcode machine closes output if finished
+      @floor_color[@curr_pos] = new_floor
+      dir = read
+      turn(dir)
+      advance
+      break unless @brain_thread.alive?
+    end
+  end
+
+  def print
+    # find most extreme X and Y positions painted,
+    # and make a rectangle that big
+    colors = @floor_color.map { |k, v| [k.transpose.to_a.flatten, paint_emoji(v)] }.to_h
+    ys = colors.map { |pos, color| pos[1] }
+    xs = colors.map { |pos, color| pos[0] }
+    ys.max.downto(ys.min).each do |y|  # Y is flipped
+      row = []
+      (xs.min .. xs.max).each do |x|
+        colors[[x,y]] ||= paint_emoji(Paint::BLACK)  # default to black if space not touched yet
+        row << colors[[x,y]]
+      end
+      puts row*''
+    end
+  end
+
+  private
+
   def turn(dir)
     puts "funny dir: #{dir}" if TurnMatrix[dir].nil?
     @direction = TurnMatrix[dir] * @direction
-  end
-    
-  def positions
-    @pos_list
   end
 
   def write(x)
@@ -60,28 +98,25 @@ class TurtleBot
     @pos_list.push(@curr_pos.transpose.to_a.flatten)
     @curr_pos
   end
-  
-  def run
-    @brain_thread = Thread.new { @brain.run }
-    loop do
-      write(@floor_color[@curr_pos])
-      new_floor = read
-      break if new_floor.nil?  # intcode machine closes output if finished
-      @floor_color[@curr_pos] = new_floor
-      dir = read
-      turn(dir)
-      advance
-      break unless @brain_thread.alive?
-    end
+
+  def paint_emoji(c)
+    colors = { Paint::BLACK => "⬛", Paint::WHITE => "⬜" }
+    colors[c]
   end
 end
 
 if __FILE__ == $0
   program = DATA.readlines[0].chomp.freeze
-  turtle = TurtleBot.new(program)
+  turtle = TurtleBot.new(program.dup)
   turtle.run
   unique_spots = turtle.positions.uniq
   puts "part 1: #{unique_spots.size} at least once"
+
+  turtle = TurtleBot.new(program.dup)
+  turtle.start_color = TurtleBot::Paint::WHITE
+  turtle.run
+  puts "\npart 2: "
+  turtle.print
 end
 
 
