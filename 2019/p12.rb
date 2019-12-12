@@ -64,12 +64,19 @@ class Moon
     # apply velocity to position to move the moon one step.
     @position += @velocity
   end
+
+  def hash_key
+    @position.to_a*'' + @velocity.to_a*''
+  end
 end
 
 class Simulator
+  attr_reader :time
+  
   def initialize
     @moons = []
     @time = 0
+    @states = {}
   end
 
   def add_moon(moon)
@@ -87,6 +94,18 @@ class Simulator
     end
   end
 
+  def run_until_same
+    # run until current state matches any previous state
+    @states[calc_hash] = true
+    loop do
+      run(1)
+      state_hash = calc_hash
+      break if @states[state_hash]
+      @states[state_hash] = true
+      puts "time: #{@time}" if @time % 1000 == 0
+    end
+  end
+
   def energy
     @moons.reduce(0) do |sum, moon|
       sum + moon.total_energy
@@ -94,6 +113,10 @@ class Simulator
   end
 
   private
+
+  def calc_hash
+    @moons.map(&:hash_key)*''
+  end
 
   def do_a_gravity!(m1, m2)
     # interact two moons via the gravity formula
@@ -119,6 +142,9 @@ if __FILE__ == $0
   num_steps = 1000
   sim.run(num_steps)
   puts "part 1: total energy after #{num_steps} steps is #{sim.energy}"
+
+  sim.run_until_same
+  puts "part 2: same after #{sim.time} steps"
 end
 
 __END__
