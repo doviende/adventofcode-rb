@@ -1,7 +1,52 @@
 #!/usr/bin/env ruby
 
+def read_node(stack, file)
+  num_nodes = file.shift
+  num_meta = file.shift
+  stack.push [:meta, num_meta]
+  stack.push [:node]
+  stack.push [:node]
+end
+
+def read_meta(num, file)
+  sum = 0
+  num.times do
+    sum += file.shift
+  end
+  sum
+end
+
+def do_stack(node_stack, file)
+  # pop a task off the stack and do it
+  meta_sum = 0
+  loop do
+    task = node_stack.pop
+    break if task.nil?
+    if task[0] == :node
+      $stderr.puts ":node"
+      read_node(node_stack, file)
+    elsif task[0] == :meta
+      $stderr.puts ":meta"
+      meta_sum += read_meta(task[1], file)
+    else
+      raise "invalid stack instruction #{task[0]}"
+    end
+  end
+  return meta_sum
+end
+
+
+def process_file(file)
+  node_stack = []
+  meta_total = 0
+  read_node(node_stack, file)
+  return do_stack(node_stack, file)
+end
+
 if __FILE__ == $0
-  
+  license_file = DATA.readlines(chomp: true)[0].split(' ').map { |x| x.to_i }
+  total = process_file(license_file)
+  puts "part 1: #{total}"
 end
 
 __END__
