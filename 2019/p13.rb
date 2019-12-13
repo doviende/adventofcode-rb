@@ -2,8 +2,73 @@
 
 require_relative 'intcode'
 
-if __FILE__ == $0
+class ArcadeMachine
+  def initialize(program)
+    @program = program
+    @input = IO.pipe
+    @output = IO.pipe
+    @game = IntcodeMachine.new(@program, @input[0], @output[1], nil)
+    @thread = nil
+  end
+
+  def run
+    @thread = Thread.new { @game.run }
+    @thread.join
+  end
+
+  def input
+    @input[1]
+  end
   
+  def output
+    @output[0]
+  end
+end
+
+class ScreenReader
+  TILE_TYPES = {
+    0 => :EMPTY,
+    1 => :WALL,
+    2 => :BLOCK,
+    3 => :PADDLE,
+    4 => :BALL
+  }.freeze
+    
+  def initialize(input)
+    @input = input
+    @screen = Hash.new(0)
+  end
+
+  def process
+    # keep track of the state of things by reading all the input, and
+    # go all the way to the end.
+    commands = @input.readlines(chomp: true).each_slice(3)
+    commands.each do |x, y, tile|
+      screen_write(x.to_i, y.to_i, tile.to_i)
+    end
+  end
+
+  def num_blocks
+    @screen.count { |k, v| TILE_TYPES[v] == :BLOCK }
+  end
+
+  private
+
+  def screen_write(x, y, tile)
+    @screen[[x,y]] = tile
+    $stderr.puts "(#{x}, #{y}) = #{TILE_TYPES[tile].to_s}"
+  end
+end
+
+
+if __FILE__ == $0
+  program = DATA.readlines(chomp: true)[0].freeze
+  machine = ArcadeMachine.new(program)
+  screen = ScreenReader.new(machine.output)
+  machine.run
+  screen.process
+  answer = screen.num_blocks
+  puts "part 1: #{answer} blocks on screen"
 end
 
 __END__
