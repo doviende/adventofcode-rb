@@ -26,6 +26,20 @@ class ArcadeMachine
   end
 end
 
+# hack String class for colored text
+# https://stackoverflow.com/questions/1489183/colorized-ruby-output
+class String
+  # colorization
+  def colorize(color_code)
+    "\e[#{color_code}m#{self}\e[0m"
+  end
+
+  def red
+    colorize(31)
+  end
+end
+###
+
 class ScreenReader
   TILE_TYPES = {
     0 => :EMPTY,
@@ -47,6 +61,7 @@ class ScreenReader
     @commands = machine.output
     @screen = Hash.new(0)
     @output = output
+    @score = 0
   end
 
   def process
@@ -58,12 +73,23 @@ class ScreenReader
     end
   end
 
+  def run
+    loop do
+      command = []
+      3.times do
+        command << @commands.gets.chomp.to_i
+      end
+      screen_write(*command)
+    end
+  end
+
   def num_blocks
     @screen.count { |k, v| TILE_TYPES[v] == :BLOCK }
   end
 
   def paint_display
     clear_screen
+    paint_score
     (0..20).each do |y|
       line = ""
       (0..35).each do |x|
@@ -78,6 +104,11 @@ class ScreenReader
     SPRITES[tile]
   end
 
+  def paint_score
+    # output single line of score using colorize hack above
+    @output.puts "SCORE: #{@score.to_s.rjust(10, ' ')}".red
+  end
+
   def clear_screen
     @output.puts "\e[H\e[2J"
   end
@@ -89,11 +120,101 @@ class ScreenReader
   private
 
   def screen_write(x, y, tile)
+    if x == -1 && y == 0
+      @score = tile
+    end
     @screen[[x,y]] = tile
-    $stderr.puts "(#{x}, #{y}) = #{TILE_TYPES[tile].to_s}"
+    # $stderr.puts "(#{x}, #{y}) = #{TILE_TYPES[tile].to_s}"
   end
 end
 
+class ArcadeCabinet
+  # has a screen and a machine inside
+  # has a joystick that takes inputs and feeds them to the machine
+  # screen will draw when the machine gives commands
+  class JOY_DIR
+    RIGHT = 1
+    LEFT = -1
+    CENTER = 0
+  end
+
+  def initialize(program)
+    @program = program
+    @machine = ArcadeMachine.new(@program)
+    @screen = ScreenReader.new(@machine)  # screen reads machine.output
+    @joystick_io = @machine.input
+    @threads = []
+  end
+
+  require 'io/console'
+
+  # https://gist.github.com/acook/4190379
+  # Reads keypresses from the user including 2 and 3 escape character sequences.
+  def read_char
+    STDIN.echo = false
+    STDIN.raw!
+
+    input = STDIN.getc.chr
+    if input == "\e" then
+      input << STDIN.read_nonblock(3) rescue nil
+      input << STDIN.read_nonblock(2) rescue nil
+    end
+  ensure
+    STDIN.echo = true
+    STDIN.cooked!
+
+    return input
+  end
+
+  def decode_char(ch)
+    case ch
+    when "\e[A"
+      return :UP_ARROW
+    when "\e[B"
+      return :DOWN_ARROW
+    when "\e[C"
+      return :RIGHT_ARROW
+    when "\e[D"
+      return :LEFT_ARROW
+    when "\u0003"
+      return :CONTROL_C
+    when "\n"
+      return :ENTER
+    else
+      return :OTHER
+    end
+  end
+
+  def run
+    # machine watches for joystick and writes to screen
+    @threads << Thread.new { @machine.run }
+    # screen continually reads from machine into buffer
+    @threads << Thread.new { @screen.run }
+    loop do
+      # get input and feed it to the machine
+      key_press = decode_char(read_char)
+      break if key_press == :CONTROL_C
+      process_key!(key_press)
+      sleep(0.1)
+      @screen.paint_display
+    end
+  end
+
+  def process_key!(key)
+    case key
+    when :RIGHT_ARROW
+      @joystick_io.puts JOY_DIR::RIGHT
+    when :LEFT_ARROW
+      @joystick_io.puts JOY_DIR::LEFT
+    when :UP_ARROW
+      @joystick_io.puts JOY_DIR::CENTER
+    when :DOWN_ARROW
+      @joystick_io.puts JOY_DIR::CENTER
+    when :ENTER
+      @joystick_io.puts JOY_DIR::CENTER
+    end
+  end
+end
 
 if __FILE__ == $0
   program = DATA.readlines(chomp: true)[0].freeze
@@ -104,6 +225,12 @@ if __FILE__ == $0
   screen.paint_display
   answer = screen.num_blocks
   puts "part 1: #{answer} blocks on screen"
+
+  # part 2
+  hacked_program = program.split(',').map(&:to_i)
+  hacked_program[0] = 2
+  cabinet = ArcadeCabinet.new(hacked_program)
+  cabinet.run
 end
 
 __END__
