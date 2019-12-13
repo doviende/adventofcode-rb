@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# coding: utf-8
 
 require_relative 'intcode'
 
@@ -33,16 +34,25 @@ class ScreenReader
     3 => :PADDLE,
     4 => :BALL
   }.freeze
+
+  SPRITES = {
+    EMPTY: "⬛",
+    WALL: "⬜",
+    BLOCK: "🎁",
+    PADDLE: "🏓",
+    BALL: "🎾"
+  }
     
-  def initialize(input)
-    @input = input
+  def initialize(machine, output=$stdout)
+    @commands = machine.output
     @screen = Hash.new(0)
+    @output = output
   end
 
   def process
     # keep track of the state of things by reading all the input, and
     # go all the way to the end.
-    commands = @input.readlines(chomp: true).each_slice(3)
+    commands = @commands.readlines(chomp: true).each_slice(3)
     commands.each do |x, y, tile|
       screen_write(x.to_i, y.to_i, tile.to_i)
     end
@@ -50,6 +60,30 @@ class ScreenReader
 
   def num_blocks
     @screen.count { |k, v| TILE_TYPES[v] == :BLOCK }
+  end
+
+  def paint_display
+    clear_screen
+    (0..20).each do |y|
+      line = ""
+      (0..35).each do |x|
+        line << render(x, y)
+      end
+      send_line(line)
+    end
+  end
+
+  def render(x, y)
+    tile = TILE_TYPES[@screen[[x,y]]]
+    SPRITES[tile]
+  end
+
+  def clear_screen
+    @output.puts "\e[H\e[2J"
+  end
+
+  def send_line(line)
+    @output.puts line
   end
 
   private
@@ -64,9 +98,10 @@ end
 if __FILE__ == $0
   program = DATA.readlines(chomp: true)[0].freeze
   machine = ArcadeMachine.new(program)
-  screen = ScreenReader.new(machine.output)
+  screen = ScreenReader.new(machine)
   machine.run
   screen.process
+  screen.paint_display
   answer = screen.num_blocks
   puts "part 1: #{answer} blocks on screen"
 end
