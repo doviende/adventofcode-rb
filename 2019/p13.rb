@@ -52,7 +52,7 @@ class ScreenReader
   SPRITES = {
     EMPTY: "⬛",
     WALL: "⬜",
-    BLOCK: "🎁",
+    BLOCK: "❎",
     PADDLE: "🏓",
     BALL: "🎾"
   }
@@ -77,7 +77,9 @@ class ScreenReader
     loop do
       command = []
       3.times do
-        command << @commands.gets.chomp.to_i
+        sub = @commands.gets
+        return if sub.nil?
+        command << sub.chomp.to_i
       end
       screen_write(*command)
     end
