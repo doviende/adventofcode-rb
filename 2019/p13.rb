@@ -233,6 +233,12 @@ if __FILE__ == $0
   hacked_program[0] = 2
   cabinet = ArcadeCabinet.new(hacked_program)
   cabinet.run
+  # notes: to save-scum, need to:
+  #  - save IP, relative base, and all the memory
+  #  - save to an auto-incrementing file so it doesn't overwrite
+  #  - would be nice to save a screenshot of the game on further lines
+  #    since the program itself is just the first line. then we could
+  #    see what the game state is before loading.
 end
 
 __END__
