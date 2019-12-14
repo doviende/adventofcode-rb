@@ -15,7 +15,11 @@ require 'pry'
 # Then we take the [ABC, 17] out because it's satisfied,
 # and push [FOO, 2] in its place.
 # Because every product (ABC in this case) has a unique rule that
-# produces it, we can always safely pop it and throw away any excess.
+# produces it, we can always safely pop it and replace it, being
+# careful to save the excess in case another rule requires ABC.
+# We don't want to apply the same rule again needlessly if we have
+# excess available to cover it.
+
 # We can't divide down a rule into smaller bits, but we can always
 # multiply it up to produce more.
 
@@ -80,113 +84,76 @@ class FuelCalculator
     @fuel = fuel
     @recipes = recipes
     @ore = 0
-    @stack = Hash.new(0)
+    @stack = Hash.new(0)  # things that are required to make :FUEL
     stack[:FUEL] = @fuel
+    # need to keep overflow amounts of things along the way. If another
+    # rule requires more of that type later, we can check if we have any
+    # in the stockpile first before using a rule again and making too much.
     @stockpile = Hash.new(0)
-    @later = {}
   end
   
   def ore_required
     loop do
-      process_one
-      break if stack.keys.size == 0 && later.keys.size == 0
+      # process one item from the stack
+      break if stack.keys.size == 0
+      item = pop_from(@stack)
+      subtract_extra(item)  # if we have any on the stockpile, use that up first
+      if item.amount > 0
+        results, extra = apply_rule(item)
+        store(results)
+        keep_extra(extra)
+      end
     end
-    ore
+    @ore
   end
 
-  def fetch_from(hash)
+  private
+
+  def keep_extra(extra)
+    @stockpile[extra.name] += extra.amount
+  end
+
+  def store(results)
+    results.each do |r|
+      if r.name == :ORE
+        @ore += r.amount
+      else
+        @stack[r.name] += r.amount
+      end
+    end
+  end
+
+  def apply_rule(item)
+    rule = recipes[item.name]
+    mult, remain = item.amount.divmod(rule.amount)
+    mult += 1 if remain > 0
+    # - multiply all the rule.reagents by the multiplier
+    newrule = rule.multiply(mult)
+    results = newrule.reagents
+    extra = newrule.amount - item.amount
+    leftover =  Reagent.new(name: item.name, amount: extra)
+    return [results, leftover]
+  end
+
+  def subtract_extra(reagent)
+    extra = stockpile[reagent.name]
+    return if extra <= 0
+    if extra < reagent.amount
+      reagent.amount -= extra
+      stockpile[reagent.name] = 0
+    else
+      # extra >= amount
+      diff = extra - reagent.amount
+      reagent.amount = 0
+      stockpile[reagent.name] = diff
+    end
+  end
+
+  def pop_from(hash)
     key = hash.keys.first
     result = Reagent.new(name: key, amount: hash[key])
     hash.delete(key)
     result
-  end
-
-  def process_one
-    is_later = false
-    if stack.keys.size > 0
-      reagent = fetch_from(stack)
-      $stderr.puts "processing #{reagent.to_a} from stack"
-    else
-      # get from later pile.
-      reagent = fetch_from(later)
-      $stderr.puts "processing #{reagent.to_a} from later"
-      is_later = true
-    end
-    if reagent.name == :ORE
-      @ore += reagent.amount
-      $stderr.puts "ore = #{ore}"
-      return
-    end
-    rule = recipes[reagent.name]
-    # Before you reduce some reagent to components, you want to make
-    # sure that you've done all the other things that can make that reagent.
-    # This will help you when the rule says " => 10 Foo" but you have 11 Foo,
-    # so you'd normally have to double the rule and increase total requirements.
-    # If you'd waited a bit longer, you'd have realized that you have extra
-    # Foo coming later for free.
-    # On the other hand, it's always safe to do at least one reaction, you
-    # just don't want to accidentally multiply when you don't need to.
-    #
-    # So in our situation here, if reagent.amount is bigger than the amount
-    # made by the rule, then we happily reduce once, and then push the
-    # remainder back onto the stack because it's still a requirement.
-    #
-    # On the other side, if the rule says " => 10 Foo" and we've just popped
-    # 5 Foo off the stack, then we stash it for later. If we run out of things to
-    # reduce on the stack, then we go into the "later" pile and do one of them, which
-    # may involve producing extra into the stockpile.
-
-    # add required "later" amount if available
-    needed = later[reagent.name]
-    if !needed.nil? && needed > 0
-      reagent.amount += needed
-      later.delete(reagent.name)
-    end
-
-    # if a requirement popped off the stack and we have some of that already
-    # in the stockpile, then we just subtract the stockpile amount and keep going.
-    extra = stockpile[reagent.name]
-    if extra > 0
-      if extra < reagent.amount
-        reagent.amount -= extra
-        stockpile[reagent.name] = 0
-      else
-        # extra >= amount
-        diff = extra - reagent.amount
-        stockpile[reagent.name] = diff
-        return  # work complete
-      end
-    end
-
-    if reagent.amount >= rule.amount || is_later
-      # --> do the rule as many times as we can
-      # - find the multiplier
-      multiplier = [reagent.amount / rule.amount, 1].max
-      # - multiply all the rule.reagents by the multiplier
-      #   and push them on the stack.
-      newrule = rule.multiply(multiplier)
-      results = newrule.reagents
-      if results.detect { |re| re.name == :ORE }
-
-      end
-      results.each do |r|
-        if r.name == :ORE
-          $stderr.puts "making ORE with #{rule}"
-          @ore += r.amount
-        else
-          stack[r.name] = stack[r.name] + r.amount
-        end
-      end
-      # - subtract the multiplied rule amount from reagent.amount
-      if reagent.amount < newrule.amount
-        stockpile[reagent.name] += newrule.amount - reagent.amount
-      else
-        reagent.amount -= newrule.amount
-      end
-    end
-    if reagent.amount > 0
-      later[reagent.name] = reagent.amount
-    end
   end
 end
 
