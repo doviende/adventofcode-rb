@@ -35,6 +35,10 @@ class Rule
     @reagents = to_reagent_list(precursors)
   end
 
+  def to_s
+    "<Rule: #{@reagents.map(&:to_a)} => #{@amount} #{@product}>"
+  end
+
   def to_reagent(itemtext)
     amount, name = itemtext.split(' ')
     Reagent.new(name: name, amount: amount)
@@ -76,8 +80,8 @@ class FuelCalculator
     @fuel = fuel
     @recipes = recipes
     @ore = 0
-    @stack = []
-    stack.push(Reagent.new(name: "fuel", amount: @fuel))
+    @stack = Hash.new(0)
+    stack[:FUEL] = @fuel
     @stockpile = Hash.new(0)
     @later = {}
   end
@@ -85,27 +89,26 @@ class FuelCalculator
   def ore_required
     loop do
       process_one
-      merge_common
-      break if stack.size == 0 && later.keys.size == 0
+      break if stack.keys.size == 0 && later.keys.size == 0
     end
     ore
   end
 
-  def fetch_from_later
-    key = later.keys.first
-    result = Reagent.new(name: key, amount: later[key])
-    later.delete(key)
+  def fetch_from(hash)
+    key = hash.keys.first
+    result = Reagent.new(name: key, amount: hash[key])
+    hash.delete(key)
     result
   end
-  
+
   def process_one
     is_later = false
-    if stack.size > 0
-      reagent = stack.pop
+    if stack.keys.size > 0
+      reagent = fetch_from(stack)
       $stderr.puts "processing #{reagent.to_a} from stack"
     else
       # get from later pile.
-      reagent = fetch_from_later
+      reagent = fetch_from(later)
       $stderr.puts "processing #{reagent.to_a} from later"
       is_later = true
     end
@@ -163,7 +166,17 @@ class FuelCalculator
       #   and push them on the stack.
       newrule = rule.multiply(multiplier)
       results = newrule.reagents
-      results.each { |r| stack.push(r) }
+      if results.detect { |re| re.name == :ORE }
+
+      end
+      results.each do |r|
+        if r.name == :ORE
+          $stderr.puts "making ORE with #{rule}"
+          @ore += r.amount
+        else
+          stack[r.name] = stack[r.name] + r.amount
+        end
+      end
       # - subtract the multiplied rule amount from reagent.amount
       if reagent.amount < newrule.amount
         stockpile[reagent.name] += newrule.amount - reagent.amount
@@ -174,15 +187,6 @@ class FuelCalculator
     if reagent.amount > 0
       later[reagent.name] = reagent.amount
     end
-  end
-
-  def merge_common
-    # if any elements of the stack are the same name, then add them up
-    tmp = stack.reduce(Hash.new(0)) do |hash, reagent|
-      hash[reagent.name] += reagent.amount
-      hash
-    end
-    stack = tmp.to_a
   end
 end
 
