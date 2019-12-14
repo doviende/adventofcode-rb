@@ -107,6 +107,11 @@ class FuelCalculator
     @ore
   end
 
+  def inc_fuel!(amount)
+    @stack[:FUEL] += amount
+    @ore = 0
+  end
+
   private
 
   def keep_extra(extra)
@@ -157,13 +162,61 @@ class FuelCalculator
   end
 end
 
+
+class FuelProducer
+  def initialize(recipes:, total_ore:)
+    @fuel_count = 1
+    @calculator = FuelCalculator.new(fuel: 1, recipes: recipes)
+    @opf = @calculator.ore_required
+    @total_ore = total_ore - @opf
+  end
+
+  def use_next_ore(fuel:)
+    inc_fuel!(fuel)
+    @calculator.ore_required
+  end
+
+  def inc_fuel!(amount)
+    @fuel_count += amount
+    @calculator.inc_fuel!(amount)
+  end
+
+  def use_total_ore!
+    # return how much fuel produced
+    fuel_amount = 1000
+    loop do
+      amount = use_next_ore(fuel: fuel_amount)
+      @total_ore -= amount
+      if @total_ore < amount
+        fuel_amount = [fuel_amount / 10, 1].max
+      end
+      $stderr.puts "remaining ore: #{@total_ore}"
+      return @fuel_count if @total_ore == 0
+      return @fuel_count - 1 if @total_ore < 0
+    end
+  end
+end
+
 if __FILE__ == $0
   rules = DATA.readlines(chomp: true).map { |ruletext| Rule.new(ruletext) }
   recipes = rules.reduce({}) do |sum, rule|
     sum.merge({ rule.product => rule })
   end
-  ore = FuelCalculator.new(fuel: 1, recipes: recipes).ore_required
-  puts "part 1: ore = #{ore}"
+  ore_per_fuel = FuelCalculator.new(fuel: 1, recipes: recipes).ore_required
+  puts "part 1: ore = #{ore_per_fuel}"
+
+  # part 2
+  # given 1000000000000 :ORE, how much :FUEL can we produce?
+  # we know from part one that 443537 :ORE is required for 1 :FUEL.
+  # But we also produce a bunch of extra intermediate bits when we produce
+  # 1 :FUEL. If we feed in 443537 :ORE several times, how long until we
+  # produce 2 :FUEL instead of just 1? It'll mean that every (Y*443537) :ORE,
+  # we actually produce (Y+1) :FUEL. Answer will be (1 trillion / (Y*443537)) * (Y+1)
+  fuel = 0
+  total_ore = 1000000000000
+  fp = FuelProducer.new(recipes: recipes, total_ore: total_ore)
+  fuel = fp.use_total_ore!
+  puts "part 2: with #{total_ore} :ORE we can make #{fuel} :FUEL"
 end
 
 __END__
