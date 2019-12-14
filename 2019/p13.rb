@@ -2,8 +2,12 @@
 # coding: utf-8
 
 require_relative 'intcode'
+require 'json'
+require 'pry'
 
 class ArcadeMachine
+  attr_accessor :game
+
   def initialize(program)
     @program = program
     @input = IO.pipe
@@ -56,7 +60,9 @@ class ScreenReader
     PADDLE: "🏓",
     BALL: "🎾"
   }
-    
+
+  attr_accessor :screen
+
   def initialize(machine, output=$stdout)
     @commands = machine.output
     @screen = Hash.new(0)
@@ -182,6 +188,14 @@ class ArcadeCabinet
       return :CONTROL_C
     when "\n"
       return :ENTER
+    when "s"
+      return :s
+    when "o"
+      return :o
+    when "r"
+      return :r
+    when "p"
+      return :p
     else
       return :OTHER
     end
@@ -214,7 +228,51 @@ class ArcadeCabinet
       @joystick_io.puts JOY_DIR::CENTER
     when :ENTER
       @joystick_io.puts JOY_DIR::CENTER
+    when :s
+      save
+    when :o
+      save
+    when :r
+      reload_last
     end
+  end
+
+  def save
+    # gather the memory state from the intcode machine, and the current screen contents
+    # and dump them to a file in the "savefiles" directory.
+    filename = "savefiles/p13_#{Time.now.strftime('%Y%m%d_%H%M%S')}.save"
+    file = File.new(filename, "w")
+    file.puts @machine.game.program*','
+    gamestate = {
+      ip: @machine.game.ip,
+      relative_base: @machine.game.relative_base
+    }
+    file.puts gamestate.to_json
+    screenstate = {
+      screen_data: @screen.screen.to_a
+    }
+    file.puts screenstate.to_json
+    file.close
+  end
+
+  def reload(filename)
+    file = File.open(filename).readlines(chomp: true)
+    @machine.game.program = file[0].split(',').map(&:to_i)
+    gamestate = JSON.parse(file[1])
+    @machine.game.ip = gamestate['ip']
+    @machine.game.relative_base = gamestate['relative_base']
+    screenstate = JSON.parse(file[2])
+    @screen.screen = screenstate['screen_data'].to_h
+  end
+
+  def reload_last
+    filename = find_last_save
+    reload(filename)
+    @screen.paint_display
+  end
+
+  def find_last_save
+    Dir.glob("savefiles/p13*.save").max_by {|f| File.mtime(f) }
   end
 end
 
