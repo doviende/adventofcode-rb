@@ -165,10 +165,13 @@ end
 
 class FuelProducer
   def initialize(recipes:, total_ore:)
-    @fuel_count = 1
-    @calculator = FuelCalculator.new(fuel: 1, recipes: recipes)
-    @opf = @calculator.ore_required
-    @total_ore = total_ore - @opf
+    @fuel_count = 0
+    @calculator = FuelCalculator.new(fuel: 0, recipes: recipes)
+    @total_ore = total_ore
+  end
+
+  def initial_fuel
+    @total_ore / 10000000
   end
 
   def use_next_ore(fuel:)
@@ -183,12 +186,12 @@ class FuelProducer
 
   def use_total_ore!
     # return how much fuel produced
-    fuel_amount = 1000
+    fuel_amount = initial_fuel
     loop do
       amount = use_next_ore(fuel: fuel_amount)
       @total_ore -= amount
       if @total_ore < amount
-        fuel_amount = [fuel_amount / 10, 1].max
+        fuel_amount = [fuel_amount / 100, 1].max
       end
       $stderr.puts "remaining ore: #{@total_ore}"
       return @fuel_count if @total_ore == 0
