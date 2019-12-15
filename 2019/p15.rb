@@ -243,9 +243,9 @@ class Mapper
       # turn 90 degrees
       case hand
       when Turn::LEFT
-        @direction.rotate(-1)
+        @direction.rotate!(-1)
       when Turn::RIGHT
-        @direction.rotate(1)
+        @direction.rotate!(1)
       else
         raise "wtf, #{hand} is not a direction"
       end
