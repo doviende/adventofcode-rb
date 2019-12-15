@@ -3,32 +3,7 @@
 
 require_relative 'intcode'
 
-class RepairDroid
-  attr_accessor :game
-
-  def initialize(program)
-    @program = program
-    @input = IO.pipe
-    @output = IO.pipe
-    @cpu = IntcodeMachine.new(@program, @input[0], @output[1], nil)
-    @cpu_thread = nil
-  end
-
-  def run
-    @cpu_thread = Thread.new { @cpu.run }
-  end
-
-  def join
-    @cpu_thread.join
-  end
-
-  def input
-    @input[1]
-  end
-
-  def output
-    @output[0]
-  end
+class RepairDroid < WrappedIntcodeMachine
 end
 
 class Map
@@ -184,7 +159,7 @@ class DroidController
     end
   end
 
-  def run
+  def run_human
     # machine watches for joystick and writes to screen
     @droid.run
     @map.paint(@position)
@@ -215,7 +190,12 @@ end
 if __FILE__ == $0
   program = DATA.readlines[0].chomp.freeze
   ctrl = DroidController.new(program)
-  ctrl.run
+  ctrl.run_human
+
+  # part 2
+  # ctrl.find_whole_map
+  # ctrl.fill_oxygen
+  # puts "part 2: it took #{ctrl.oxygen_timer} minutes to fill the room"
 end
 
 __END__
