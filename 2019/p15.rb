@@ -8,14 +8,14 @@ end
 
 class Map
   module Terrain
-    WALL = "#"
-    FLOOR = "."
-    OXYGEN = ">"
-    UNKNOWN = " "
-    START = "<"
+    WALL = "⬛"
+    FLOOR = "⬜"
+    OXYGEN = "❇️ "
+    UNKNOWN = "  "
+    START = "⚛️ "
   end
 
-  DroidEmoji = "D"
+  DroidEmoji = "🦑"
 
   attr_reader :locations
 
@@ -313,8 +313,8 @@ if __FILE__ == $0
 
   # part 2
   ctrl.find_whole_map
-  ctrl.fill_oxygen
-  puts "part 2: it took #{ctrl.oxygen_timer} minutes to fill the room"
+  time = ctrl.fill_oxygen
+  puts "part 2: it took #{time} minutes to fill the room"
 end
 
 __END__
