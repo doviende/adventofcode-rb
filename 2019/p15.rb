@@ -68,10 +68,19 @@ class DroidController
     GOAL_REACHED = 2
   end
 
+  attr_reader :map, :position
+
   def initialize(program)
     @droid = RepairDroid.new(program)
     @map = Map.new
     @position = [0,0]
+    @mapper = Mapper.new(self)
+  end
+
+  def find_whole_map
+    @droid.run
+    @map.paint(@position)
+    @mapper.map
   end
 
   def send_move(dir)
@@ -82,6 +91,7 @@ class DroidController
   def attempt_move(dir)
     result = send_move(dir)
     update(dir, result)
+    result
   end
 
   def update(dir, result)
@@ -187,15 +197,124 @@ class DroidController
   end
 end
 
+
+class Mapper
+  def initialize(ctrl)
+    @ctrl = ctrl
+  end
+
+  class LeftHand
+    CardinalDirections = [DroidController::Direction::NORTH,
+                          DroidController::Direction::EAST,
+                          DroidController::Direction::SOUTH,
+                          DroidController::Direction::WEST].freeze
+    module Turn
+      LEFT = 0
+      RIGHT = 1
+    end
+
+    class << self
+      def instance
+        @instance ||= new
+      end
+
+      def turn_right
+        instance.turn(Turn::RIGHT)
+      end
+
+      def turn_left
+        instance.turn(Turn::LEFT)
+      end
+
+      def direction
+        instance.direction
+      end
+    end
+
+    def initialize
+      @direction = CardinalDirections.dup
+    end
+
+    def direction
+      @direction.first
+    end
+
+    def turn(hand)
+      # turn 90 degrees
+      case hand
+      when Turn::LEFT
+        @direction.rotate(-1)
+      when Turn::RIGHT
+        @direction.rotate(1)
+      else
+        raise "wtf, #{hand} is not a direction"
+      end
+    end
+  end
+
+  def map
+    # explore whole map so no floor has any unknowns next to it.
+    # - use the "put your left hand on the wall" method to walk the maze.
+    # - from the starting point, need to find a wall
+    #   - attempt a direction
+    #   - if it's floor, try to turn left
+    #   - if it's wall, that *is* left.
+    #   - with left hand on wall, try to go forward.
+    #   - each forward step, you try the left wall again to check.
+    #   - if a forward step fails, that's the new left wall. change direction.
+    #   - end when reaching (0,0) and there are no unknown spots neighbouring it.
+    loop do
+      result = try_forward
+      if result == DroidController::Result::WALL
+        LeftHand.turn_right
+      else
+        # successfully walked forward, need to know if wall still there on left hand
+        LeftHand.turn_left
+      end
+      break if home && no_more_unknowns_here
+    end
+  end
+
+  def try_forward
+    result = @ctrl.attempt_move(LeftHand.direction)
+    @ctrl.map.paint(@ctrl.position)
+    result
+  end
+
+  def home
+    @ctrl.position == [0,0]
+  end
+
+  def map_terrain(x,y)
+    @ctrl.map.locations[[x,y]]
+  end
+
+  def no_more_unknowns_here
+    # current position has no adjacent unknowns
+    here = @ctrl.position
+    neighbours(here).detect { |x,y| map_terrain(x,y) == Map::Terrain::UNKNOWN }.nil?
+  end
+
+  def neighbours(loc)
+    n = []
+    [-1, 1].each do |dy|
+      [-1, 1].each do |dx|
+        n << [loc[0]+dx, loc[1]+dy]
+      end
+    end
+    n
+  end
+end
+
 if __FILE__ == $0
   program = DATA.readlines[0].chomp.freeze
   ctrl = DroidController.new(program)
-  ctrl.run_human
+  #ctrl.run_human
 
   # part 2
-  # ctrl.find_whole_map
-  # ctrl.fill_oxygen
-  # puts "part 2: it took #{ctrl.oxygen_timer} minutes to fill the room"
+  ctrl.find_whole_map
+  ctrl.fill_oxygen
+  puts "part 2: it took #{ctrl.oxygen_timer} minutes to fill the room"
 end
 
 __END__
