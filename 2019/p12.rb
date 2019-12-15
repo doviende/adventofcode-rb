@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-
+require 'pry'
 # N-body problem
 # * 4 moons
 # * each moon has 3D position and 3D velocity
@@ -66,7 +66,7 @@ class Moon
   end
 
   def hash_key
-    @position.to_a*'' + @velocity.to_a*''
+    [@position.to_a, @velocity.to_a].hash
   end
 end
 
@@ -74,13 +74,29 @@ class Simulator
   attr_reader :time
   
   def initialize
-    @moons = []
+    @moons = nil
+    @moons_original = []
     @time = 0
-    @states = {}
+    @answer = nil
+    @all_hashes = nil
+  end
+
+  def common_repeat
+    @answer[0].lcm(@answer[1]).lcm(@answer[2])
   end
 
   def add_moon(moon)
-    @moons.push moon
+    @moons_original.push moon
+  end
+
+  def reset
+    @moons = []
+    @moons_original.each do |m|
+      @moons << m.dup
+    end
+    @answer = [nil, nil, nil]
+    @all_hashes = [Hash.new(false), Hash.new(false), Hash.new(false)]  # only need to check repeats individually per dimension
+    @time = 0
   end
 
   def run(steps)
@@ -95,15 +111,32 @@ class Simulator
   end
 
   def run_until_same
-    # run until current state matches any previous state
-    @states[calc_hash] = true
+    # find when each dimension repeats, since they are independent
+    check_repeats
     loop do
       run(1)
-      state_hash = calc_hash
-      break if @states[state_hash]
-      @states[state_hash] = true
       puts "time: #{@time}" if @time % 1000 == 0
+      check_repeats
+      break if all_repeats_found
     end
+  end
+
+  def check_repeats
+    [0,1,2].each do |dim|
+      if @answer[dim].nil?
+        val = dim_hash(dim)
+        if @all_hashes[dim][val]
+          @answer[dim] = @time
+          puts "found answer for #{['x', 'y', 'z'][dim]} at #{@time}"
+        else
+          @all_hashes[dim][val] = true
+        end
+      end
+    end
+  end
+
+  def all_repeats_found
+    !(@answer[0].nil? || @answer[1].nil? || @answer[2].nil?)
   end
 
   def energy
@@ -113,6 +146,15 @@ class Simulator
   end
 
   private
+
+  def dim_hash(dim)
+    # hash all x positions and x velocities
+    dim_array = @moons.reduce([]) do |sum, m|
+      sum << m.position[0, dim]
+      sum << m.velocity[0, dim]
+    end
+    dim_array.hash
+  end
 
   def calc_hash
     @moons.map(&:hash_key)*''
@@ -140,11 +182,13 @@ if __FILE__ == $0
     sim.add_moon(Moon.new(mline))
   end
   num_steps = 1000
+  sim.reset
   sim.run(num_steps)
   puts "part 1: total energy after #{num_steps} steps is #{sim.energy}"
 
+  sim.reset
   sim.run_until_same
-  puts "part 2: same after #{sim.time} steps"
+  puts "part 2: same after #{sim.common_repeat} steps"
 end
 
 __END__
