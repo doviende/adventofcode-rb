@@ -26,7 +26,11 @@ class Map
   end
 
   def update(position, terrain)
-    locations[position] = terrain unless position == [0,0]
+    if position != [0,0] || terrain == Terrain::OXYGEN
+      # normally don't overwrite the start location when we walk over it
+      # but allow it when we fill oxygen later
+      @locations[position] = terrain
+    end
   end
 
   def paint(droid_position)
@@ -75,6 +79,7 @@ class DroidController
     @map = Map.new
     @position = [0,0]
     @mapper = Mapper.new(self)
+    @oxygen_filler = OxygenFiller.new(@map)
   end
 
   def find_whole_map
@@ -195,6 +200,10 @@ class DroidController
       attempt_move(Direction::SOUTH)
     end
   end
+
+  def fill_oxygen
+    @oxygen_filler.fill
+  end
 end
 
 
@@ -267,6 +276,7 @@ class Mapper
       result = try_forward
       if result == DroidController::Result::WALL
         LeftHand.turn_right
+        @ctrl.map.paint(@ctrl.position)
       else
         # successfully walked forward, need to know if wall still there on left hand
         LeftHand.turn_left
@@ -277,7 +287,7 @@ class Mapper
 
   def try_forward
     result = @ctrl.attempt_move(LeftHand.direction)
-    @ctrl.map.paint(@ctrl.position)
+    sleep(0.01)
     result
   end
 
@@ -292,17 +302,87 @@ class Mapper
   def no_more_unknowns_here
     # current position has no adjacent unknowns
     here = @ctrl.position
-    neighbours(here).detect { |x,y| map_terrain(x,y) == Map::Terrain::UNKNOWN }.nil?
+    self.class.neighbours(here).detect { |x,y| map_terrain(x,y) == Map::Terrain::UNKNOWN }.nil?
   end
 
-  def neighbours(loc)
+  def self.neighbours(loc)
     n = []
-    [-1, 1].each do |dy|
-      [-1, 1].each do |dx|
-        n << [loc[0]+dx, loc[1]+dy]
-      end
+    [-1, 1].each do |d|
+      n << [loc[0], loc[1]+d]
+      n << [loc[0]+d, loc[1]]
     end
     n
+  end
+end
+
+
+class OxygenFiller
+  EMPTY_SPACES = [Map::Terrain::FLOOR, Map::Terrain::START]
+  def initialize(map)
+    @map = map
+    @time = 0
+    @oxygen_start = nil
+    @distance_from_start = nil
+  end
+
+  def find_oxygen_start
+    @oxygen_start = @map.locations.detect { |pos,terr| terr == Map::Terrain::OXYGEN }.first
+  end
+
+  def fill
+    find_oxygen_start
+    loop do
+      break if all_filled?
+      fill_empty_neighbours
+      @map.paint(@oxygen_start)
+      sleep(0.05)
+      @time += 1
+    end
+    [@time, @distance_from_start]
+  end
+
+  def fill_empty_neighbours
+    empty_neighbours.each do |pos|
+      oxygen(pos)
+    end
+  end
+
+  def empty_neighbours
+    empty = []
+    all_oxygens.each do |oxypos, _t|
+      Mapper.neighbours(oxypos).each do |n|
+        if needs_oxygen?(n)
+          empty << n
+        end
+      end
+    end
+    empty
+  end
+
+  def all_oxygens
+    @map.locations.select do |pos, terr|
+      terr == Map::Terrain::OXYGEN
+    end
+  end
+
+  def oxygen(pos)
+    # fill oxygen at this position
+    if @map.locations[pos] == Map::Terrain::START
+      @distance_from_start = @time + 1
+    end
+    @map.update(pos, Map::Terrain::OXYGEN)
+    pos
+  end
+
+  def needs_oxygen?(pos)
+    EMPTY_SPACES.include? @map.locations[pos]
+  end
+
+  def all_filled?
+    needs_oxygen = @map.locations.detect do |pos,terr|
+      EMPTY_SPACES.include? terr
+    end
+    needs_oxygen.nil?
   end
 end
 
@@ -313,8 +393,10 @@ if __FILE__ == $0
 
   # part 2
   ctrl.find_whole_map
-  time = ctrl.fill_oxygen
-  puts "part 2: it took #{time} minutes to fill the room"
+  total_time, distance_from_start = ctrl.fill_oxygen
+
+  puts "part 1: distance from start to oxygen unit is #{distance_from_start}"
+  puts "part 2: it took #{total_time} minutes to fill the room"
 end
 
 __END__
