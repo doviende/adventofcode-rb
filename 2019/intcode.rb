@@ -28,9 +28,10 @@ class IntcodeMachine
   
   def initialize(program, instream=$stdin, outstream=$stdout, debug=$stderr)
     if program.class == String
-      program = program.split(',').map(&:to_i)
+      @program = program.split(',').map(&:to_i)
+    else
+      @program = program
     end
-    @program = program
     @instream = instream
     @outstream = outstream
     @dbgstream = debug
@@ -191,5 +192,46 @@ class Parameter
   def as_addr
     return value + @relative_base if VALID_MODES[mode] == :relative
     value
+  end
+end
+
+
+class WrappedIntcodeMachine
+  attr_accessor :cpu
+
+  def initialize(program)
+    @program = program
+    @input = IO.pipe
+    @output = IO.pipe
+    @cpu = IntcodeMachine.new(@program, @input[0], @output[1], nil)
+    @cpu_thread = nil
+  end
+
+  def method_missing(method, *args)
+    if @cpu.respond_to?(method)
+      @cpu.send(method, *args)
+    else
+      super
+    end
+  end
+
+  def run
+    @cpu_thread = Thread.new { @cpu.run }
+  end
+
+  def memory
+    @cpu.program
+  end
+
+  def join
+    @cpu_thread.join
+  end
+
+  def input
+    @input[1]
+  end
+
+  def output
+    @output[0]
   end
 end
