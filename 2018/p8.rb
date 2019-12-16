@@ -3,9 +3,12 @@
 def read_node(stack, file)
   num_nodes = file.shift
   num_meta = file.shift
-  stack.push [:meta, num_meta]
-  stack.push [:node]
-  stack.push [:node]
+  if num_meta > 0
+    stack.push [:meta, num_meta]
+  end
+  num_nodes.times do
+    stack.push [:node]
+  end
 end
 
 def read_meta(num, file)
@@ -23,10 +26,8 @@ def do_stack(node_stack, file)
     task = node_stack.pop
     break if task.nil?
     if task[0] == :node
-      $stderr.puts ":node"
       read_node(node_stack, file)
     elsif task[0] == :meta
-      $stderr.puts ":meta"
       meta_sum += read_meta(task[1], file)
     else
       raise "invalid stack instruction #{task[0]}"
@@ -35,7 +36,6 @@ def do_stack(node_stack, file)
   return meta_sum
 end
 
-
 def process_file(file)
   node_stack = []
   meta_total = 0
@@ -43,10 +43,144 @@ def process_file(file)
   return do_stack(node_stack, file)
 end
 
+
+class FancyNodeProcessor
+  def initialize(license_file)
+    # expecting array of ints
+    @file = license_file
+    @node_values = Hash.new(0)
+    @stack = []
+    @next_id = 0
+  end
+
+  def run
+    root_id = generate_node_id
+    push_node(root_id)
+    loop do
+      instruction = @stack.pop
+      break if instruction.nil?
+      do_instr(instruction)
+    end
+    @node_values[root_id]
+  end
+
+  def do_instr(instr)
+    case instr[:type]
+    when :meta
+      eval_meta(instr[:id], instr[:num], instr[:ref_ids])
+    when :node
+      eval_node(instr[:id])
+    else
+      raise "invalid instruction: #{instr}"
+    end
+  end
+
+  def generate_node_id
+    @next_id += 1
+  end
+
+  def eval_node(my_id)
+    # read header values out of file, generate IDs for any nodes,
+    # and then set up the meta instruction for later
+    puts "eval node #{my_id}"
+    num_nodes = read_file
+    num_meta = read_file
+    raise "fuck. num_nodes: #{num_nodes}, num_meta: #{num_meta}" if num_nodes.nil?
+    node_ids = [nil, ]  # to fix addressing starting at 1
+    if num_nodes == 0
+      process_simple_meta(my_id, num_meta)
+    else
+      num_nodes.times do
+        node_ids << generate_node_id
+      end
+      puts "[Header #{num_nodes} #{num_meta} generated: #{node_ids}]"
+      push_reference_meta(my_id, num_meta, node_ids)
+      node_ids.reverse.each do |id|
+        push_node(id) unless id.nil?
+      end
+    end
+  end
+
+  def eval_meta(id, num_meta, ref_ids)
+    puts "Read #{num_meta} metas"
+    metas = []
+    num_meta.times do
+      metas << read_file
+    end
+    sum = 0
+    metas.each do |rel|
+      ref = ref_ids[rel]
+      next if ref.nil?
+      sum += @node_values[ref]
+    end
+    puts "scores[#{id}] <- nodes #{ref_ids} = #{sum}"
+    @node_values[id] = sum
+  end
+
+  def read_file
+    number = @file.shift
+    puts "read: #{number}"
+    number
+  end
+
+  def process_simple_meta(id, num_meta)
+    # read num_meta ints from the file
+    # and add them together, assigning value into id
+    sum = 0
+    num_meta.times do
+      sum += read_file
+    end
+    puts "node #{id} <- #{sum}"
+    @node_values[id] = sum
+  end
+
+  def push_reference_meta(id, num_meta, ref_ids)
+    # push a special meta instruction to fill the value
+    # of node "id" with the values of the nodes at ref_ids.
+    # Later, read num_meta values out of the file, and those are the
+    # indexes in ref_ids to get to the real node IDs to add together.
+    item = {
+      type: :meta,
+      id: id,
+      num: num_meta,
+      ref_ids: ref_ids
+    }
+    puts "Push: :meta #{id} <- #{ref_ids}"
+    @stack.push(item)
+  end
+
+  def push_node(id)
+    # push a node instruction on the stack with the given id
+    item = {
+      type: :node,
+      id: id
+    }
+    puts "Push: :node #{id}"
+    @stack.push(item)
+  end
+end
+
 if __FILE__ == $0
-  license_file = DATA.readlines(chomp: true)[0].split(' ').map { |x| x.to_i }
-  total = process_file(license_file)
+  license_file = DATA.readlines(chomp: true)[0].split(' ').map { |x| x.to_i }.freeze
+  puts "license file is #{license_file.size} ints long"
+  total = process_file(license_file.dup)
   puts "part 1: #{total}"
+
+  # part 2
+  # if num_children > 0, then the metadata numbers refer to
+  # value of that index of child, indexed from 1.
+  # Node value = sum(metadata) if num_children == 0
+  # Node value = sum(child nodes referred to by this node's metadata as references)
+  # note: reference to child 0 is skipped. reference to child that doesn't exist is skipped.
+  # Attempt: let's keep a hash of node IDs, and change the metadata reference to the actual node ID assigned
+  # for those child nodes.
+  # push onto the stack some polish notation instructions.
+  # - when we pop a meta node, we need to know both how many items to read, and whether they're raw or references.
+  # - if they're references, we should have a lookup table to translate them into real node numbers.
+  # - then we read them, we resolve them (because those nodes have been finished already),
+  #   and we add up their value to be the value of this node, which we assign into the hash table.
+  proc = FancyNodeProcessor.new(license_file.dup)
+  puts "part 2: #{proc.run}"
 end
 
 __END__
