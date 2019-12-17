@@ -159,6 +159,10 @@ if __FILE__ == $0
   # - then say "y" or "n" for continuous video feed, prolly just say "n"
   # - after completing program, robot prints map and returns a big non-ascii value which is the answer.
 
+  # program notes:
+  # potential full path:
+  path = "L,6,R,8,R,12,L,6,L,8,L,10,L,8,R,12,L,6,R,8,R,12,L,6,L,8,L,8,L,10,L,6,L,6,L,10,L,8,R,12,L,8,L,10,L,6,L,6,L,10,L,8,R,12,L,6,R,8,R,12,L,6,L,8,L,8,L,10,L,6,L,6,L,10,L,8,R,12"
+
 end
 
 __END__
