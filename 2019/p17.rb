@@ -1,14 +1,164 @@
 #!/usr/bin/env ruby
 
+require_relative 'intcode'
+require 'pry'
+
+class VacuumRobot < WrappedIntcodeMachine
+  module RobotStatus
+    AWAKE = 2
+    ASLEEP = 1
+  end
+  def set_wake(status=RobotStatus::AWAKE)
+    program[0] = status
+  end
+
+  def define_func(name, func_string)
+    # name can be "main", "A", "B", or "C"
+  end
+
+  def continuous(choice)
+    # choice is "y" or "n"
+  end
+
+  def send_command(string)
+    # convert each char of the command to ascii ord values,
+    # and then send each one to the robot's input separately.
+  end
+
+  def send_settings
+    [@funcs['main'],
+     @funcs['A'],
+     @funcs['B'],
+     @funcs['C'],
+     @cont_choice].each { |msg| send_command(msg) }
+  end
+end
+
+class AsciiControl
+  module CameraIcon
+    PIPE = "#"
+    SPACE = "."
+    BOT_UP = "^"
+    BOT_LEFT = "<"
+    BOT_RIGHT = ">"
+    BOT_DOWN = "v"
+    BOT_TUMBLE = "X"
+  end
+
+  def initialize(program)
+    @robot = VacuumRobot.new(program)
+    @camera_view = []
+    @camera_points = []
+  end
+
+  def run
+    @robot.run
+  end
+
+  def read_camera!
+    # return list of intersection coordinates
+    # 1) read camera output from robot.
+    # 2) find list of coords of intersections in output
+    # 3) calc alignments from coords.
+    line = ""
+    @camera_view = []
+    @robot.reset
+    @robot.run
+    @robot.output.each_line do |ascii_number|
+      char = ascii_number.to_i.chr
+      if char == "\n"
+        @camera_view << line
+        line = ""
+      else
+        line << char
+      end
+    end
+    display_camera
+  end
+
+  def display_camera
+    @camera_view.each do |line|
+      puts line
+    end
+  end
+
+  def display_points
+    @cam_points.each do |line|
+      puts line*''
+    end
+  end
+
+  def detect_intersections
+    # save a list of intersections
+    return if @camera_view.empty?
+    intersections = []
+    @cam_points = @camera_view.map { |line| line.split('') }
+    @cam_points.each.with_index do |line, y|
+      line.each.with_index do |val, x|
+        if intersection?(x, y)
+          intersections << [x, y]
+        end
+      end
+    end
+    display_points
+    intersections
+  end
+
+  def intersection?(x, y)
+    # return true if x, y is an intersection
+    raise "no points" if @cam_points.empty?
+    return false if point(x, y) != CameraIcon::PIPE
+    neigh = neighbours(x, y)
+    if neigh.each.map { |p| point(*p) }.all? { |x| x==CameraIcon::PIPE }
+      @cam_points[y][x] = "O"
+      return true
+    end
+    return false
+  end
+
+  def point(x, y)
+    max_y = @cam_points.size - 1
+    max_x = @cam_points[0].size - 1
+    if x < 0 || x > max_x || y < 0 || y > max_y
+      return nil
+    end
+    return @cam_points[y][x]
+  end
+
+  def neighbours(x, y)
+    list = []
+    [[-1, 0], [0, 1], [1, 0], [0, -1]].each do |dx, dy|
+      list << [x + dx, y + dy]
+    end
+    return list
+  end
+end
+
+
+
 if __FILE__ == $0
   # part 1
   # ascii display with lines of hashes. find all intersection points.
   # grid is (0,0) in top left. "alignment" of each intersection point is X * Y
   # give the sum of the alignments.
   program = DATA.readlines[0].chomp.split(',').map(&:to_i).freeze
-  cam = AsciiCamera.new(program.dup)
-  sum = cam.sum_alignments
+  ctrl = AsciiControl.new(program.dup)
+  ctrl.read_camera!
+  inters = ctrl.detect_intersections
+  sum = inters.map { |x,y| x*y }.sum
+  puts "#{inters}"
   puts "part 1: sum of alignments is #{sum}"
+
+  # part 2:
+  # - need to find a path around without falling off scaffolding
+  # - get 3 functions
+  # - each function has max 20 chars
+  # - chars include numerical amount forward, {L,R}, or comma
+  # - specify to robot the main routine consisting of functions {A,B,C},
+  #    then specify each of A(), B(), and C().
+  # - then say "y" or "n" for continuous video feed, prolly just say "n"
+  # - after completing program, robot prints map and returns a big non-ascii value which is the answer.
+
 end
 
 __END__
