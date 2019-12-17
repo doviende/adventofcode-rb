@@ -8,21 +8,56 @@ class VacuumRobot < WrappedIntcodeMachine
     AWAKE = 2
     ASLEEP = 1
   end
+
+  def initialize(*args)
+    @funcs = {
+      "A" => "L,10,L,8,R,12\n",
+      "B" => "L,6,R,8,R,12,L,6,L,8\n",
+      "C" => "L,8,L,10,L,6,L,6\n",
+      "main" => "B,A,B,C,A,C,A,B,C,A\n"
+    }
+    @cont_choice = "n\n"
+    super(*args)
+  end
+
   def set_wake(status=RobotStatus::AWAKE)
     program[0] = status
   end
 
   def define_func(name, func_string)
-    # name can be "main", "A", "B", or "C"
+    @funcs[name] = func_string
   end
 
   def continuous(choice)
-    # choice is "y" or "n"
+    @cont_choice = "#{choice}\n"
+  end
+
+  def run
+    super
+    @output_thread = Thread.new do
+      line = ""
+      loop do
+        ch = output.gets.chomp.to_i
+        if ch > 256
+          puts "answer: #{ch} dust"
+        end
+        ch = ch.chr
+        if ch == "\n"
+          puts line
+        else
+          line << ch
+        end
+      end
+    end
+    @output_thread.join
   end
 
   def send_command(string)
     # convert each char of the command to ascii ord values,
     # and then send each one to the robot's input separately.
+    string.chars.map(&:ord).map(&:to_s).each do |com|
+      self.input.puts com
+    end
   end
 
   def send_settings
@@ -52,6 +87,9 @@ class AsciiControl
   end
 
   def run
+    @robot.reset
+    @robot.set_wake
+    @robot.send_settings
     @robot.run
   end
 
@@ -134,7 +172,75 @@ class AsciiControl
   end
 end
 
+class PieceCalc
+  def initialize(path)
+    @path = path
+    @pieces = {
+      "A" => "L,10,L,8,R,12",
+      "B" => "L,6,R,8,R,12,L,6,L,8",
+      "C" => "L,8,L,10,L,6,L,6"
+    }
+    @sequence = []
+  end
+  
+  def calc_pieces(num_pieces)
+    # return all 3 pieces that cover the path.
+    # starting at the start of the path, we know we have to have a piece there.
+    # for each piece size, count how many times that piece matches the path as a substring.
+    # start greedily with the longest piece with at least one other match
+    # see if the rest of the board can be covered with two.
+    # If the rest can't be covered with two, then backtrack and drop one char.
+    # Probably need to handle splitting numbers 12 --> 6,6
 
+    # interesting strategy:  take out a piece...check all spots where it was removed. if
+    # it was preceded or succeeded by the same char every time, add that char to the pattern and repeat
+    # doing this, we get:
+    # A = "L,10,L,8,R,12"
+    # B = "L,6,R,8,R,12,L,6,L,8"
+    # C = "L,8,L,10,L,6,L,6"
+    first_list = next_piece_possibilities(@path)
+    first_list.each do |first|
+    end
+  end
+
+  def next_piece_possibilities(path)
+    piece_list = []
+    path.chars.each.with_index do |letter, i|
+      next if i < 4
+      piece = path[0,i+1]
+      break if piece.size >= 20
+      times = path.scan(/#{piece}/).size
+      puts "matched #{piece} #{times} times" if times > 1
+      piece_list << piece if times > 1
+      break if times == 1
+    end
+    return piece_list
+  end
+
+  def subtract_piece(path, piece)
+    i=0
+    rest = ""
+    loop do
+      if path[i..-1].match(/^#{piece}/)
+        i += piece.size
+      else
+        rest << path[i]
+        i += 1
+      end
+      break if i == path.size
+    end
+    return rest
+  end
+
+  def sequence
+    # return the sequence of the pieces A,B,C that covers the path.
+    if @pieces.empty?
+      calc_pieces
+    end
+    return @sequence unless @sequence.empty?
+    
+  end
+end
 
 if __FILE__ == $0
   # part 1
@@ -143,11 +249,11 @@ if __FILE__ == $0
   # give the sum of the alignments.
   program = DATA.readlines[0].chomp.split(',').map(&:to_i).freeze
   ctrl = AsciiControl.new(program.dup)
-  ctrl.read_camera!
-  inters = ctrl.detect_intersections
-  sum = inters.map { |x,y| x*y }.sum
-  puts "#{inters}"
-  puts "part 1: sum of alignments is #{sum}"
+#  ctrl.read_camera!
+#  inters = ctrl.detect_intersections
+#  sum = inters.map { |x,y| x*y }.sum
+#  puts "#{inters}"
+#  puts "part 1: sum of alignments is #{sum}"
 
   # part 2:
   # - need to find a path around without falling off scaffolding
@@ -162,6 +268,9 @@ if __FILE__ == $0
   # program notes:
   # potential full path:
   path = "L,6,R,8,R,12,L,6,L,8,L,10,L,8,R,12,L,6,R,8,R,12,L,6,L,8,L,8,L,10,L,6,L,6,L,10,L,8,R,12,L,8,L,10,L,6,L,6,L,10,L,8,R,12,L,6,R,8,R,12,L,6,L,8,L,8,L,10,L,6,L,6,L,10,L,8,R,12"
+  ctrl.run
+  # repeating pieces:
+  
 
 end
 
