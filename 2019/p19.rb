@@ -6,6 +6,10 @@
 # - (0,0) is right in front of the beam, so it will always be true there.
 #
 # Part 1 GOAL: find the number of points in a 50x50 grid where the tractor beam is in effect.
+#
+# Part 2 GOAL: find the closest spot in the beam where you can fit a 100x100 square, and then
+#              get the closest position of the square to the tractor beam (square's near corner).
+#              Answer is y + 10000 * x
 
 require_relative 'intcode'
 require 'pry'
@@ -51,6 +55,7 @@ class DroneController
     # return count of positions with tractor beam == true
     # naive: just check all:
     count = 0
+    whole_beam = []
     (0..y_size-1).each do |y|
       line = ""
       (0..x_size-1).each do |x|
@@ -63,8 +68,39 @@ class DroneController
         end
       end
       puts line
+      whole_beam << line
     end
     count
+  end
+
+  def fancy_trace(square_size=100)
+    # start a little bit down, like y = 100
+    # trace right until finding where x becomes in the beam.
+    # increment y, find left edge again.
+    # at each left edge, test if the opposite corner is also in the beam.
+    # when found, return (x, y-100)
+    start_x = 0
+    y = 100
+    loop do
+      y += 1
+      (start_x..1000000).each do |x|
+        if send_drone(x, y)  # found left edge of beam
+          puts "edge: (#{x}, #{y})"
+          start_x = x  # start searching here when we go down one line
+          if check_square(square_size, x, y)
+            return [x, y-(square_size-1)]
+          end
+          break  # go to next line
+        end
+      end
+    end
+  end
+
+  def check_square(square_size, x, y)
+    # if a square_size x square_size square fits inside the beam
+    # with bottom left corner at (x,y), return true.
+    return false if y < square_size
+    send_drone(x+square_size-1, y-(square_size-1))
   end
 end
 
@@ -73,6 +109,10 @@ if __FILE__ == $0
   drone_ctl = DroneController.new(program.dup)
   count = drone_ctl.trace_beam(50,50)
   puts "part 1: #{count} covered by beam inside (50,50)"
+
+  # part 2
+  x, y = drone_ctl.fancy_trace
+  puts "part 2: square starts at (#{x}, #{y}), answer is #{y+10000*x}"
 end
 
 
