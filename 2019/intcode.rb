@@ -200,11 +200,13 @@ class WrappedIntcodeMachine
   attr_accessor :cpu
 
   def initialize(program)
-    @program = program
-    @input = IO.pipe
-    @output = IO.pipe
-    @cpu = IntcodeMachine.new(@program, @input[0], @output[1], nil)
+    @program_saved = program.dup
+    @program = nil
+    @input = nil
+    @output = nil
+    @cpu = nil
     @cpu_thread = nil
+    init_cpu
   end
 
   def method_missing(method, *args)
@@ -213,6 +215,23 @@ class WrappedIntcodeMachine
     else
       super
     end
+  end
+
+  def reset
+    kill_thread
+    init_cpu
+  end
+
+  def init_cpu
+    @program = @program_saved.dup
+    @input = IO.pipe
+    @output = IO.pipe
+    @cpu = IntcodeMachine.new(@program, @input[0], @output[1], nil)
+    @cpu_thread = nil
+  end
+
+  def kill_thread
+    @cpu_thread.kill unless @cpu_thread.nil?
   end
 
   def run
