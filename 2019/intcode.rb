@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'pry'
+
 class IntcodeMachine
   # size is for opcode plus args, to advance the instruction pointer
   OPCODES = { 1 => {name: :add,
@@ -52,22 +54,26 @@ class IntcodeMachine
       @ins = @machine.instream
       @outs = @machine.outstream
     end
-    
-    def add(mem, first, second, dest)
-      mem[dest.as_addr] = first.get + second.get
+
+    def _store(val, mem, addr)
+      raise "stored a nil" if val.nil?
+      mem[addr] = val
       nil
     end
     
+    def add(mem, first, second, dest)
+      _store(first.get + second.get, mem, dest.as_addr)
+    end
+    
     def mult(mem, first, second, dest)
-      mem[dest.as_addr] = first.get * second.get
-      nil
+      _store(first.get * second.get, mem, dest.as_addr)
     end
 
     def input(mem, dest)
       # print "> "
-      mem[dest.as_addr] = ins.gets.chomp.to_i
-      @machine.debug "received input: #{mem[dest.value]}"
-      nil
+      inp = ins.gets.chomp.to_i
+      @machine.debug "received input: #{inp}"
+      _store(inp, mem, dest.as_addr)
     end
 
     def output(mem, first)
@@ -90,13 +96,11 @@ class IntcodeMachine
     end
 
     def less_than(mem, first, second, result)
-      mem[result.as_addr] = (first.get < second.get) ? 1 : 0
-      nil
+      _store( (first.get < second.get) ? 1 : 0, mem, result.as_addr)
     end
     
     def equals(mem, first, second, result)
-      mem[result.as_addr] = (first.get == second.get) ? 1 : 0
-      nil
+      _store( (first.get == second.get) ? 1 : 0, mem, result.as_addr)
     end
 
     def change_relative_base(mem, new_base)
@@ -136,9 +140,18 @@ class IntcodeMachine
     modes = modes + [0] * (args.size - modes.size)
     parameter_args = modes.zip(args).map { |m,v| Parameter.new(m, v, @program, @relative_base) }
     debug "IP: #{@ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
-    new_ip = funcs.send(op[:name],
-                        @program,
-                        *parameter_args)
+    begin
+      new_ip = funcs.send(op[:name],
+                          @program,
+                          *parameter_args)
+    rescue StandardError => e
+      puts "intcode machine error, shit.  #{e.message}"
+      puts "IP: #{@ip} | #{op[:name]} #{parameter_args.map { |x| x.get }}"
+      parameter_args.each do |p|
+        puts "param | mode: #{Parameter::VALID_MODES[p.mode]} value: #{p.value} relative: #{p.relative_base}"
+      end
+      binding.pry
+    end
     if new_ip.nil?
       # just increment normally, instruction did not jump
       return @ip + op[:size]
@@ -158,7 +171,7 @@ end
 
 class Parameter
   # each Parameter has a mode and a value.
-  attr_accessor :mode, :value, :mem
+  attr_accessor :mode, :value, :mem, :relative_base
 
   class BadModeException < Exception
   end
@@ -186,7 +199,9 @@ class Parameter
     if VALID_MODES[mode] == :relative
       relative = @relative_base
     end
-    mem.fetch(value + relative, 0)
+    fetched = mem[value + relative]
+    return 0 if fetched.nil?
+    fetched
   end
 
   def as_addr
