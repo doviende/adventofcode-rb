@@ -10,17 +10,77 @@
 # Every move forward, it evaluates its program (max 15 instructions). At
 # the end of the springscript program, if J is true, it will jump (4 spaces ahead).
 # Have to send "WALK" at the end to say you're done entering the program.
+#
+# Instructions:
+# AND X Y:   Y <- X && Y
+# OR X Y:    Y <- X || Y
+# NOT X Y:   Y <- !X
+# X can be: {A, B, C, D, J, T}
+# Y can be: {J, T}
+#
+# seems like a strategy is to use J as an accumulator to keep ANDing and ORing
+# things into, while T is tmp storage to be able to NOT something before combining
+# it into J.
+# I think this implies that you can't have bracket expressions, because you only
+# accumulate into J, and if you wanted to combine J with a NOT of one of the ABCD
+# registers, then it basically has to go into T first to be able to NOT it.
 
 require_relative 'intcode'
 
+class SpringScripter
+  def initialize(program, springscript)
+    @program = program
+    @springscript = springscript.split("\n")
+    @programmer = AsciiIntcodeMachine.new(program.dup)
+  end
+
+  def input_script
+    @springscript.each do |command|
+      @programmer.send_command(command)
+    end
+  end
+
+  def run
+    @programmer.run
+    input_script
+    output
+    @programmer.join
+  end
+
+  def output
+    @programmer.readlines.each do |line|
+      puts line
+    end
+  end
+end
+
+# things to make it across:
+###.##   D && !C
+#...##   (!A && !B) && !C
+###.##.##
+#    if the next spot is a whole we just have to jump (e.g. if we land there)
+#.###
+##.##
+
+# need to figure out what logical format things need to be in, in order
+# to sequentially accumulate them without needing brackets to OR big things together.
+# It feels like if any of ABC are a hole and D is good, then just jump.
+# -> if !A or !B or !C and D
+
 if __FILE__ == $0
   program = DATA.readlines[0].chomp.freeze
-  drone_factory = AsciiIntcodeMachine.new(program)
-  drone_factory.run
-  drone_factory.send_command("WALK")
-  drone_factory.readlines.each do |line|
-    puts line
-  end
+  myscript = <<-ENDSCRIPT
+NOT A J
+NOT B T
+OR T J
+NOT C T
+OR T J
+AND D J
+WALK
+ENDSCRIPT
+  scripter = SpringScripter.new(program, myscript)
+  scripter.run
+
 end
 
 __END__
