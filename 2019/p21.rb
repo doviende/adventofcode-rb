@@ -67,6 +67,20 @@ end
 # It feels like if any of ABC are a hole and D is good, then just jump.
 # -> if !A or !B or !C and D
 
+# part 2 - have to look ahead further and make it across this:
+###.#.#...#.##
+# so we need to land on the 2nd island, not the first tiny one.
+# --> tried "(!A or !B or !C) and D and H, but it decides not to jump
+# if H is a hole, even if there's plenty of room to walk, so need something like "and (H or E)"
+# Let's say we had "FOO and (H or E)". how do we reduce? maybe repeat?
+# FOO and H or (FOO and E)
+# NOT E T
+# NOT T T   == T <- E
+# AND J T    == T <- FOO and E
+# AND H J   == J <- FOO and H
+# OR T J    == (FOO and E) OR (FOO and H)
+
+
 if __FILE__ == $0
   program = DATA.readlines[0].chomp.freeze
   myscript = <<-ENDSCRIPT
@@ -81,6 +95,23 @@ ENDSCRIPT
   scripter = SpringScripter.new(program, myscript)
   scripter.run
 
+  # part 2 - with RUN command, we have extra lookahead in EFGHI
+  runscript = <<-ENDSCRIPT
+NOT A J
+NOT B T
+OR T J
+NOT C T
+OR T J
+AND D J
+NOT E T
+NOT T T
+AND J T
+AND H J
+OR T J
+RUN
+ENDSCRIPT
+  scripter = SpringScripter.new(program, runscript)
+  scripter.run
 end
 
 __END__
