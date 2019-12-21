@@ -292,13 +292,19 @@ class AsciiIntcodeMachine < WrappedIntcodeMachine
   def readlines
     out_lines = []
     line = ""
-    self.output.each_line do |ascii_number|
-      char = ascii_number.to_i.chr
-      if char == "\n"
-        out_lines << line
+    self.output.each_line do |n|
+      ascii_number = n.to_i
+      if ascii_number > 256
+        out_lines << "integer output: #{ascii_number}"
         line = ""
       else
-        line << char
+        char = ascii_number.to_i.chr
+        if char == "\n"
+          out_lines << line
+          line = ""
+        else
+          line << char
+        end
       end
     end
     out_lines
