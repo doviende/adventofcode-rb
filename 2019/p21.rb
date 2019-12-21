@@ -14,6 +14,13 @@
 require_relative 'intcode'
 
 if __FILE__ == $0
+  program = DATA.readlines[0].chomp.freeze
+  drone_factory = AsciiIntcodeMachine.new(program)
+  drone_factory.run
+  drone_factory.send_command("WALK")
+  drone_factory.readlines.each do |line|
+    puts line
+  end
 end
 
 __END__
