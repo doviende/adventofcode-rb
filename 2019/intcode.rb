@@ -269,3 +269,38 @@ class WrappedIntcodeMachine
     @output[0]
   end
 end
+
+
+class AsciiIntcodeMachine < WrappedIntcodeMachine
+
+  # Purpose: to be able to take in whole strings and
+  # feed them one at a time to the intcode machine, encoded as ascii
+  # numeric values (including newline as "10").
+
+  def send_command(string)
+    # convert each char of the command to ascii ord values,
+    # and then send each one to the robot's input separately.
+    if string[-1] != "\n"
+      string << "\n"
+    end
+    string.chars.map(&:ord).map(&:to_s).each do |com|
+      self.input.puts com
+    end
+    string
+  end
+
+  def readlines
+    out_lines = []
+    line = ""
+    self.output.each_line do |ascii_number|
+      char = ascii_number.to_i.chr
+      if char == "\n"
+        out_lines << line
+        line = ""
+      else
+        line << char
+      end
+    end
+    out_lines
+  end
+end
