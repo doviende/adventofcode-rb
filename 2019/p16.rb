@@ -53,6 +53,34 @@ if __FILE__ == $0
   calc.apply(100)
   answer = calc.output[0,8]
   puts "part 1: answer is #{answer}"
+
+  # part 2 - input is repeated 10000 times, "message" has an offset way into the output based
+  # on first 7 chars being the offset. apply 100 times, find offset message.
+  #
+  # The trick was that when you need the offset numbers that are at a position indexed by the
+  # first 7 digits, it means that the numbers you need are past the halfway point in the
+  # 650*10000 element array.
+  #
+  # Because you're past the halfway mark, the pattern for your position N will be N zeroes, and then 1s
+  # to the end of the array from there. That means the value is just the sum of everything from there to
+  # the end. Then when you repeat the calculation another round, it's the same.
+  # So you can just start at the back end and compute the sum down to your position N, and then repeat
+  # that procedure starting from the end again. You get to compute your offset numbers super simply without
+  # any inputs from earlier numbers.
+
+  offset = (signal[0,7]*'').to_i
+  puts "offset = #{offset}"
+  bigsignal = signal*10000
+  mysignal = bigsignal[offset .. -1]
+  100.times do |time|
+    puts "#{time}"
+    (mysignal.size - 2).downto(0) do |i|
+      mysignal[i] = (mysignal[i] + mysignal[i+1]) % 10
+    end
+  end
+  answer = mysignal[0, 8]*''
+
+  puts "part 2: answer is #{answer}"
 end
 
 __END__
