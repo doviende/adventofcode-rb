@@ -28,7 +28,7 @@ class IntcodeMachine
 
   attr_accessor :program, :ip, :instream, :outstream, :funcs, :relative_base
   
-  def initialize(program, instream=$stdin, outstream=$stdout, debug=$stderr)
+  def initialize(program, instream=$stdin, outstream=$stdout, debug=$stderr, input_nonblock=false)
     if program.class == String
       @program = program.split(',').map(&:to_i)
     else
@@ -37,8 +37,9 @@ class IntcodeMachine
     @instream = instream
     @outstream = outstream
     @dbgstream = debug
+    @input_nonblock = input_nonblock
     @ip = 0
-    @funcs = Funcs.new(self)
+    @funcs = Funcs.new(self, @input_nonblock)
     @relative_base = 0
   end
 
@@ -49,10 +50,11 @@ class IntcodeMachine
   class Funcs
     attr_accessor :ins, :outs
     
-    def initialize(machine)
+    def initialize(machine, input_nonblock=false)
       @machine = machine
       @ins = @machine.instream
       @outs = @machine.outstream
+      @input_nonblock = input_nonblock
     end
 
     def _store(val, mem, addr)
@@ -71,7 +73,16 @@ class IntcodeMachine
 
     def input(mem, dest)
       # print "> "
-      inp = ins.gets.chomp.to_i
+      if @input_nonblock
+        if ins.ready?
+          inp = ins.gets.chomp.to_i
+        else
+          inp = -1
+          sleep(0.1)
+        end
+      else
+        inp = ins.gets.chomp.to_i
+      end
       @machine.debug "received input: #{inp}"
       _store(inp, mem, dest.as_addr)
     end
@@ -214,10 +225,11 @@ end
 class WrappedIntcodeMachine
   attr_accessor :cpu
 
-  def initialize(program)
+  def initialize(program, input_nonblock=false)
     @program_saved = program.dup
     @program = nil
     @input = nil
+    @input_nonblock = input_nonblock
     @output = nil
     @cpu = nil
     @cpu_thread = nil
@@ -241,7 +253,7 @@ class WrappedIntcodeMachine
     @program = @program_saved.dup
     @input = IO.pipe
     @output = IO.pipe
-    @cpu = IntcodeMachine.new(@program, @input[0], @output[1], nil)
+    @cpu = IntcodeMachine.new(@program, @input[0], @output[1], nil, @input_nonblock)
     @cpu_thread = nil
   end
 
