@@ -78,7 +78,7 @@ class IntcodeMachine
           inp = ins.gets.chomp.to_i
         else
           inp = -1
-          sleep(0.1)
+          sleep(0.5)
         end
       else
         inp = ins.gets.chomp.to_i
