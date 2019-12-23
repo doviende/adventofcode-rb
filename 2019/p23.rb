@@ -9,6 +9,7 @@
 # reading and writing should be non-blocking, and if there's nothing to read then it should
 # receive a -1.
 require_relative 'intcode'
+require 'pry'
 
 class Router
   def initialize(nic_program, num_ports=50)
@@ -17,6 +18,10 @@ class Router
     @output_ports = []
     @nics = []
     @num_ports = num_ports
+    @last_nat_y = nil
+    @nat_output = nil
+    @nat_packet = nil
+    @finished = false
   end
 
   def setup
@@ -28,6 +33,8 @@ class Router
       @output_ports << cpu.output
       cpu.input.puts "#{port}"
     end
+    @nat_output = IO.pipe
+    @output_ports << @nat_output[0]
   end
 
   def run
@@ -35,6 +42,7 @@ class Router
     @nics.each do |cpu|
       cpu.run
     end
+    @nat_thread = Thread.new { run_nat }
   end
 
   def monitor_nics
@@ -42,8 +50,48 @@ class Router
     @monitor_thread = Thread.new { route_packets }
   end
 
-  def join_monitor
+  def join
     @monitor_thread.join
+    @nat_thread.join
+  end
+
+  def run_nat
+    # have a thread monitoring traffic and looking for all inputs to be idle.
+    # If everything's idle, send nat_packet to address 0.
+    sleep 3
+    puts "NAT: starting..."
+    loop do
+      if all_idle?
+        packet = @nat_packet.dup
+        x = packet[0]
+        y = packet[1]
+        puts "NAT: all idle, sending packet (#{x} #{y})"
+        puts ""
+        if @last_nat_y == y
+          puts "NAT: found value #{y} twice in a row!"
+          @finished = true
+          puts "NAT: done"
+          return
+        else
+          @last_nat_y = y
+        end
+        @nat_output[1].puts "0"
+        @nat_output[1].puts "#{x}"
+        @nat_output[1].puts "#{y}"
+      else
+        puts "NAT: not idle"
+      end
+      sleep 1
+    end
+  end
+
+  def all_idle?
+    # check all intcode machine inputs and see if there's anything there.
+    # if they all have nothing to read, then return true.
+    any_ready = @nics.detect do |nic|
+      nic.instance_variable_get(:@input)[0].ready?
+    end
+    !any_ready
   end
 
   def route_packets
@@ -51,9 +99,9 @@ class Router
     # when ready, read 3 inputs from that port.
     # first number is address, write other two to the right port.
     # when something is written to port 255, print and stop.
-    puts "starting router..."
+    puts "ROU: starting router..."
     loop do
-      puts "waiting for input"
+      puts "ROU: waiting for input"
       rs, ws = IO.select(@output_ports)
       rs.each do |r|
         address = r.gets.chomp.to_i
@@ -61,11 +109,15 @@ class Router
         @input_ports[address].puts "#{x}" unless address == 255
         y = r.gets.chomp.to_i
         @input_ports[address].puts "#{y}" unless address == 255
-        puts "received packet: [#{address}, (#{x} #{y})]"
+        puts "ROU: recv: [#{address}, (#{x} #{y})]"
         if address == 255
-          puts "exiting router..."
-          return
+          puts "ROU: writing to NAT: (#{x} #{y})"
+          @nat_packet = [x, y]
         end
+      end
+      if @finished
+        puts "ROU: router done"
+        return
       end
     end
   end
@@ -76,7 +128,7 @@ if __FILE__ == $0
   router = Router.new(nic_program)
   router.setup
   router.run
-  router.join_monitor
+  router.join
 end
 
 __END__
