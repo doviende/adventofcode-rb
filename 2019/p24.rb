@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'pry'
 # problem: game of life.
 # You receive a 5x5 grid with # = bug, . = empty
 # A bug dies unless there's exactly 1 bug adjacent (4 adjacent spots)
@@ -81,6 +82,7 @@ class BugBoard
     @outer = outer
     @rows = empty_board(size)
     @size = size
+    @rows_next = empty_board(size)
   end
 
   def empty_board(size)
@@ -88,13 +90,15 @@ class BugBoard
     size.times do
       board << [false] * size
     end
+    board
   end
 
   def set_board(boolrows)
-    @rews = []
-    boolrows.each |r| do
+    @rows = []
+    boolrows.each do |r|
       @rows << r.dup
     end
+    self
   end
 
   def set_loc(x, y, value)
@@ -114,6 +118,7 @@ class BugBoard
 
   def needs_outer
     # true if any edges are 1
+    puts "needs_outer in #{self}"
     return false unless self.outer.nil?
     return true if @rows[0].any?
     return true if @rows[@size - 1].any?
@@ -125,6 +130,7 @@ class BugBoard
 
   def needs_inner
     # true if any spots around center are 1
+    puts "needs_inner in #{self}"
     return false unless self.inner.nil?
     center = @size / 2
     return get_loc(center - 1, center) ||
@@ -134,15 +140,93 @@ class BugBoard
   end
 
   def calc_next
+    puts "starting calc_next in #{self}"
+    (0..@size-1).each do |y|
+      (0..@size-1).each do |x|
+        x_sum = 0
+        y_sum = 0
+        # check left and right
+        if x == 0
+          x_sum = outer_left + (get_loc(x+1, y) ? 1 : 0)
+        elsif x == @size - 1
+          x_sum = outer_right + (get_loc(x-1, y) ? 1 : 0)
+        elsif x == @center - 1 && y == @center
+          x_sum = inner_right + (get_loc(x-1, y) ? 1 : 0)
+        elsif x == @center + 1 && y == @center
+          x_sum = inner_left + (get_loc(x+1, y) ? 1 : 0)
+        else
+          x_sum = (get_loc(x-1, y) ? 1 : 0) + (get_loc(x+1, y) ? 1 : 0)
+        end
+        # check top and bottom
+        if y == 0
+          y_sum = outer_top + (get_loc(x, y+1) ? 1 : 0)
+        elsif x == @size - 1
+          y_sum = outer_bot + (get_loc(x, y-1) ? 1 : 0)
+        elsif x == @center && y == @center - 1
+          y_sum = inner_down + (get_loc(x, y-1) ? 1 : 0)
+        elsif x == @center && y == @center + 1
+          y_sum = inner_up + (get_loc(x, y+1) ? 1 : 0)
+        else
+          y_sum = (get_loc(x, y+1) ? 1 : 0) + (get_loc(x, y+1) ? 1 : 0)
+        end
+      end
+    end
   end
 
   def set_next
+    @rows = @rows_next
+    @rows_next = empty_board
   end
 
   # some easy funcs for checking neighbour spots on inner and outer?
   # because if outer is nil, then outer_top should be false (empty)
   # Need to be able to evaluate the same even if the next thing over hasn't
   # been created yet.
+
+  # when looking at outer, we always grab just one square
+  def outer_top
+    return 0 if outer.nil?
+    # check bottom middle
+    outer.get_loc(@center, @size - 1) ? 1 : 0
+  end
+  def outer_bot
+    return 0 if outer.nil?
+    # check top middle
+    outer.get_loc(@center, 0) ? 1 : 0
+  end
+  def outer_left
+    return 0 if outer.nil?
+    # check right middle
+    outer.get_loc(@size - 1, @center) ? 1 : 0
+  end
+  def outer_right
+    return 0 if outer.nil?
+    # check left middle
+    outer.get_loc(0, @center) ? 1 : 0
+  end
+
+  # when looking at inner, we sum the whole side
+  def inner_up
+    # looking up at the bottom of the inner grid
+    return 0 if inner.nil?
+    # sum bottom edge
+    (0..@size-1).map { |x| inner.get_loc(x, @size - 1) ? 1 : 0 }.sum
+  end
+  def inner_down
+    return 0 if inner.nil?
+    # sum top edge
+    (0..@size-1).map { |x| inner.get_loc(x, 0) ? 1 : 0 }.sum
+  end
+  def inner_right
+    return 0 if inner.nil?
+    # sum left edge
+    (0..@size-1).map { |y| inner.get_loc(0, y) ? 1 : 0 }.sum
+  end
+  def inner_left
+    return 0 if inner.nil?
+    # sum right edge
+    (0..@size-1).map { |y| inner.get_loc(@size - 1, y) ? 1 : 0 }.sum
+  end
 end
 
 class RecursiveBugs
@@ -156,6 +240,7 @@ class RecursiveBugs
   end
 
   def step
+    binding.pry
     @boards.each { |b| make_inner(b) if b.needs_inner }
     @boards.each { |b| make_outer(b) if b.needs_outer }
     @boards.each { |b| b.calc_next }
@@ -163,6 +248,7 @@ class RecursiveBugs
   end
 
   def make_board(dir, board)
+    "make_#{dir}(#{board})"
     board.send("#{dir}=", BugBoard.new)
     @boards << board.send("#{dir}")
   end
@@ -176,7 +262,7 @@ class RecursiveBugs
   end
 
   def num_bugs
-    @boards.map { |b|.num_bugs }.sum
+    @boards.map { |b| b.num_bugs }.sum
   end
 end
 
