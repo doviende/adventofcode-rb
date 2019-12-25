@@ -80,12 +80,13 @@ class BugBoard
     raise "size not odd" if size % 2 == 0
     @inner = inner
     @outer = outer
-    @rows = empty_board(size)
     @size = size
+    @rows = empty_board(size)
     @rows_next = empty_board(size)
+    @center = size / 2 + 1
   end
 
-  def empty_board(size)
+  def empty_board(size=@size)
     board = []
     size.times do
       board << [false] * size
@@ -106,6 +107,8 @@ class BugBoard
   end
 
   def get_loc(x, y)
+    raise "shit" if @rows.nil?
+    raise "double shit (#{x}, #{y})" if @rows[y].nil?
     @rows[y][x]
   end
 
@@ -122,7 +125,7 @@ class BugBoard
     return false unless self.outer.nil?
     return true if @rows[0].any?
     return true if @rows[@size - 1].any?
-    sides_any = @rows.reduce(0) do |sum, r|
+    sides_any = @rows.reduce(false) do |sum, r|
       sum || r[0] || r[@size - 1]
     end
     sides_any
@@ -160,11 +163,11 @@ class BugBoard
         # check top and bottom
         if y == 0
           y_sum = outer_top + (get_loc(x, y+1) ? 1 : 0)
-        elsif x == @size - 1
+        elsif y == @size - 1
           y_sum = outer_bot + (get_loc(x, y-1) ? 1 : 0)
-        elsif x == @center && y == @center - 1
+        elsif y == @center - 1 && x == @center
           y_sum = inner_down + (get_loc(x, y-1) ? 1 : 0)
-        elsif x == @center && y == @center + 1
+        elsif y == @center + 1 && x == @center
           y_sum = inner_up + (get_loc(x, y+1) ? 1 : 0)
         else
           y_sum = (get_loc(x, y+1) ? 1 : 0) + (get_loc(x, y+1) ? 1 : 0)
@@ -240,7 +243,6 @@ class RecursiveBugs
   end
 
   def step
-    binding.pry
     @boards.each { |b| make_inner(b) if b.needs_inner }
     @boards.each { |b| make_outer(b) if b.needs_outer }
     @boards.each { |b| b.calc_next }
