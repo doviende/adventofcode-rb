@@ -94,12 +94,11 @@ class BugBoard
     board
   end
 
-  def set_board(boolrows)
+  def set_board!(boolrows)
     @rows = []
     boolrows.each do |r|
       @rows << r.dup
     end
-    self
   end
 
   def set_loc(x, y, value)
@@ -112,6 +111,17 @@ class BugBoard
     @rows[y][x]
   end
 
+  def row(y)
+    @rows[y]
+  end
+
+  def print
+    puts ""
+    (0..@size-1).each do |y|
+      puts @rows[y].map { |x| x ? "#" : "." }*''
+    end
+  end
+
   def num_bugs
     # should have center spot always false
     @rows.reduce(0) do |sum, row|
@@ -121,7 +131,6 @@ class BugBoard
 
   def needs_outer
     # true if any edges are 1
-    puts "needs_outer in #{self}"
     return false unless self.outer.nil?
     return true if @rows[0].any?
     return true if @rows[@size - 1].any?
@@ -133,7 +142,6 @@ class BugBoard
 
   def needs_inner
     # true if any spots around center are 1
-    puts "needs_inner in #{self}"
     return false unless self.inner.nil?
     center = @size / 2
     return get_loc(center - 1, center) ||
@@ -143,7 +151,6 @@ class BugBoard
   end
 
   def calc_next
-    puts "starting calc_next in #{self}"
     (0..@size-1).each do |y|
       (0..@size-1).each do |x|
         x_sum = 0
@@ -171,6 +178,14 @@ class BugBoard
           y_sum = inner_up + (get_loc(x, y+1) ? 1 : 0)
         else
           y_sum = (get_loc(x, y+1) ? 1 : 0) + (get_loc(x, y+1) ? 1 : 0)
+        end
+        # do something with x_sum, y_sum
+        sum = x_sum + y_sum
+        @rows_next[y][x] = false
+        if get_loc(x, y) && sum == 1
+          @rows_next[y][x] = true
+        elsif !get_loc(x, y) && (sum == 1 || sum == 2)
+          @rows_next[y][x] = true
         end
       end
     end
@@ -233,13 +248,16 @@ class BugBoard
 end
 
 class RecursiveBugs
-  def initialize(rows)
-    @init_rows = rows
+  def initialize(string_rows)
+    @init_rows = string_rows
     rows = @init_rows.map do |r|
       r.chars.map { |x| x == "#" }
     end
     @boards = []
-    @boards << BugBoard.new().set_board(rows)
+    init_board = BugBoard.new
+    init_board.set_board!(rows)
+    init_board.print
+    @boards << init_board
   end
 
   def step
@@ -247,6 +265,15 @@ class RecursiveBugs
     @boards.each { |b| make_outer(b) if b.needs_outer }
     @boards.each { |b| b.calc_next }
     @boards.each { |b| b.set_next }
+  end
+
+  def print
+    # print boards side by side
+    (0..4).each do |y|
+      combine_rows = @boards.map { |b| b.row(y).map { |x| x ? "#" : "." }*'' }*'  '
+      puts combine_rows
+    end
+    puts ""
   end
 
   def make_board(dir, board)
@@ -293,8 +320,10 @@ if __FILE__ == $0
   #  or the inner edge.
   # Change the evaluation function to take other levels into account if needed.
 
+  puts "starting part 2"
+  puts ""
   game = RecursiveBugs.new(input_rows.dup)
-  200.times { game.step }
+  200.times { game.step; game.print }
   bugs = game.num_bugs
   puts "part 2: after 200 steps, there are a total of #{bugs} bugs"
 end
