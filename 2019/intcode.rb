@@ -321,4 +321,20 @@ class AsciiIntcodeMachine < WrappedIntcodeMachine
     end
     out_lines
   end
+
+  def continual_output(outstream=$stdout)
+    # use me in a thread to do human output
+    line = ""
+    loop do
+      char = self.output.gets
+      return if char.nil?
+      char = char.chomp.to_i.chr
+      if char == "\n"
+        outstream.puts line
+        line = ""
+      else
+        line << char
+      end
+    end
+  end
 end
