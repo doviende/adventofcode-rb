@@ -27,6 +27,8 @@ if __FILE__ == $0
   # and then try different combinations of them to see which were "too light"
   # and which were "too heavy"; eventually found a combination that was just right.
   # weight answer was: space heater + semiconductor + hypercube + festive hat
+
+  # part 2 is just get all the other stars from previous days.
 end
 
 __END__
