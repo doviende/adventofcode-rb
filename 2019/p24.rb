@@ -73,7 +73,12 @@ class GameOfBugs
   end
 end
 
+
+##########################
+# new class for linked list version
+
 class BugBoard
+  include Enumerable
   attr_accessor :inner, :outer
 
   def initialize(inner: nil, outer: nil, size: 5)
@@ -115,11 +120,21 @@ class BugBoard
     @rows[y]
   end
 
+  def each(&block)
+    @rows.each(&block)
+  end
+
+  def to_s
+    str = ""
+    (0..@size-1).each do |y|
+      str << @rows[y].map { |x| x ? "#" : "." }*'' + "\n"
+    end
+    str
+  end
+
   def print
     puts ""
-    (0..@size-1).each do |y|
-      puts @rows[y].map { |x| x ? "#" : "." }*''
-    end
+    puts self.to_s
   end
 
   def num_bugs
@@ -154,6 +169,7 @@ class BugBoard
       (0..@size-1).each do |x|
         x_sum = 0
         y_sum = 0
+        next if x == @center && y == @center
         # check left and right
         if x == 0
           x_sum = outer_left + (get_loc(x+1, y) ? 1 : 0)
@@ -176,7 +192,7 @@ class BugBoard
         elsif y == @center + 1 && x == @center
           y_sum = inner_up + (get_loc(x, y+1) ? 1 : 0)
         else
-          y_sum = (get_loc(x, y+1) ? 1 : 0) + (get_loc(x, y+1) ? 1 : 0)
+          y_sum = (get_loc(x, y-1) ? 1 : 0) + (get_loc(x, y+1) ? 1 : 0)
         end
         # do something with x_sum, y_sum
         sum = x_sum + y_sum
@@ -204,22 +220,22 @@ class BugBoard
   def outer_top
     return 0 if outer.nil?
     # check bottom middle
-    outer.get_loc(@center, @size - 1) ? 1 : 0
+    outer.get_loc(@center, @center - 1) ? 1 : 0
   end
   def outer_bot
     return 0 if outer.nil?
     # check top middle
-    outer.get_loc(@center, 0) ? 1 : 0
+    outer.get_loc(@center, @center + 1) ? 1 : 0
   end
   def outer_left
     return 0 if outer.nil?
     # check right middle
-    outer.get_loc(@size - 1, @center) ? 1 : 0
+    outer.get_loc(@center - 1, @center) ? 1 : 0
   end
   def outer_right
     return 0 if outer.nil?
     # check left middle
-    outer.get_loc(0, @center) ? 1 : 0
+    outer.get_loc(@center + 1, @center) ? 1 : 0
   end
 
   # when looking at inner, we sum the whole side
