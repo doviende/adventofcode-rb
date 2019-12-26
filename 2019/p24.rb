@@ -83,7 +83,7 @@ class BugBoard
     @size = size
     @rows = empty_board(size)
     @rows_next = empty_board(size)
-    @center = size / 2 + 1
+    @center = size / 2
   end
 
   def empty_board(size=@size)
@@ -143,11 +143,10 @@ class BugBoard
   def needs_inner
     # true if any spots around center are 1
     return false unless self.inner.nil?
-    center = @size / 2
-    return get_loc(center - 1, center) ||
-           get_loc(center + 1, center) ||
-           get_loc(center, center + 1) ||
-           get_loc(center, center - 1)
+    return get_loc(@center - 1, @center) ||
+           get_loc(@center + 1, @center) ||
+           get_loc(@center, @center + 1) ||
+           get_loc(@center, @center - 1)
   end
 
   def calc_next
@@ -277,8 +276,13 @@ class RecursiveBugs
   end
 
   def make_board(dir, board)
-    "make_#{dir}(#{board})"
-    board.send("#{dir}=", BugBoard.new)
+    new_board = BugBoard.new
+    board.send("#{dir}=", new_board)
+    if dir == :inner
+      new_board.outer = board
+    else
+      new_board.inner = board
+    end
     @boards << board.send("#{dir}")
   end
 
