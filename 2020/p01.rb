@@ -21,10 +21,24 @@ class FindSums
     end
   end
 
+  def find_triple
+    set.each do |first|
+      set.each do |second|
+        attempt = 2020 - (first + second)
+        if set.include? attempt
+          puts "#{first} + #{second} + #{attempt} = 2020"
+          puts "#{first} x #{second} x #{attempt} = #{first*second*attempt}"
+          return [first, second, attempt]
+        end
+      end
+    end
+  end
+
 end
 if __FILE__ == $0
   finder = FindSums.new
   finder.find_pair
+  finder.find_triple
 end
 
 __END__
