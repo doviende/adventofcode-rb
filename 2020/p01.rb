@@ -1,20 +1,30 @@
 #!/usr/bin/env ruby
 require 'set'
+class FindSums
+  attr_accessor :set
 
-if __FILE__ == $0
-  set = Set.new([])
-  DATA.each_line do |line|
-    i = line.to_i
-    set.add i
-  end
-  set.each do |i|
-    if set.include?(2020-i)
-      puts "both #{i} and #{2020-i} were in the list."
-      puts "#{i} x #{2020-i} = #{i*(2020-i)}"
-      exit
+  def initialize
+    @set = Set.new([])
+    DATA.each_line do |line|
+      i = line.to_i
+      set.add i
     end
   end
-  puts "did not find a match"
+
+  def find_pair
+    set.each do |i|
+      if set.include?(2020-i)
+        puts "both #{i} and #{2020-i} were in the list."
+        puts "#{i} x #{2020-i} = #{i*(2020-i)}"
+        return [i, 2020-i]
+      end
+    end
+  end
+
+end
+if __FILE__ == $0
+  finder = FindSums.new
+  finder.find_pair
 end
 
 __END__
