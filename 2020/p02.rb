@@ -23,6 +23,7 @@ end
 
 class CountRuleChecker < RuleChecker
   def satisfy?(str)
+    str = str
     desired_chars = str.chars.group_by(&:itself)[rule.letter]
     return false if desired_chars.nil?
 
@@ -34,7 +35,13 @@ end
 
 class PositionRuleChecker < RuleChecker
   def satisfy?(str)
-    true
+    str = str
+    first = str.chars[rule.first - 1]
+    second = str.chars[rule.second - 1]
+    only_first = (first == rule.letter && second != rule.letter)
+    only_second = (first != rule.letter && second == rule.letter)
+    # puts "#{@rule_text} | #{str} -- #{[first, second]} #{only_first || only_second}"
+    only_first || only_second
   end
 end
 
@@ -44,8 +51,8 @@ if __FILE__ == $0
   part1_count = 0
   part2_count = 0
   DATA.each_line.map { |line| line.split(":") }.each do |rule, str|
-    part1_count += 1 if CountRuleChecker.new(rule).satisfy?(str)
-    part2_count += 1 if PositionRuleChecker.new(rule).satisfy?(str)
+    part1_count += 1 if CountRuleChecker.new(rule).satisfy?(str.strip)
+    part2_count += 1 if PositionRuleChecker.new(rule).satisfy?(str.strip)
   end
   puts "#{part1_count} lines satisfied part 1."
   puts "#{part2_count} lines satisfied part 2."
