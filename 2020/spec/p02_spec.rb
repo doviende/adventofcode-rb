@@ -1,7 +1,7 @@
 require_relative "../p02.rb"
 
 describe "2020 p2" do
-  describe RuleChecker do
+  describe CountRuleChecker do
     let(:instance) { described_class.new(rule) }
 
     describe "#parse_rule" do
