@@ -1,17 +1,37 @@
 #!/usr/bin/env ruby
+require "pry"
 
 class RuleChecker
-  def satisfy?(rule, str)
-    true
+  Rule = Struct.new(:min, :max, :letter)
+  RulePattern = /(.*)-(.*) (.)/
+
+  def initialize(rule)
+    @rule_text = rule
+  end
+
+  def rule
+    @rule ||= parse_rule
+  end
+
+  def parse_rule
+    m = RulePattern.match(@rule_text)
+    return Rule.new(m[1].to_i, m[2].to_i, m[3])
+  end
+
+  def satisfy?(str)
+    desired_chars = str.chars.group_by(&:itself)[rule.letter]
+    return false if desired_chars.nil?
+
+    count = desired_chars.count
+    count >= rule.min && count <= rule.max
   end
 end
 
 if __FILE__ == $0
   puts "part 1"
   count = 0
-  checker = RuleChecker.new
   DATA.each_line.map { |line| line.split(":") }.each do |rule, str|
-    count += 1 if checker.satisfy?(rule, str)
+    count += 1 if RuleChecker.new(rule).satisfy?(str)
   end
   puts "#{count} lines satisfied their rule."
 end
