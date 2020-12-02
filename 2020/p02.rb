@@ -1,6 +1,19 @@
 #!/usr/bin/env ruby
 
+class RuleChecker
+  def satisfy?(rule, str)
+    true
+  end
+end
+
 if __FILE__ == $0
+  puts "part 1"
+  count = 0
+  checker = RuleChecker.new
+  DATA.each_line.map { |line| line.split(":") }.each do |rule, str|
+    count += 1 if checker.satisfy?(rule, str)
+  end
+  puts "#{count} lines satisfied their rule."
 end
 
 __END__
