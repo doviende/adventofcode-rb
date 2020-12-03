@@ -37,6 +37,23 @@ if __FILE__ == $0
   map = MapGrid.new(lines)
   part1 = map.trees_on_slope(right: 3, down: 1)
   puts "in part 1, going right 3 and down 1, we hit #{part1} trees."
+
+  # part 2: do the same as above, but with 5 different slopes.
+  # answer is the counts multiplied
+  # Right 1, down 1.
+  # Right 3, down 1. (This is the slope you already checked.)
+  # Right 5, down 1.
+  # Right 7, down 1.
+  # Right 1, down 2.
+  slopes = [
+    [1, 1],
+    [3, 1],
+    [5, 1],
+    [7, 1],
+    [1, 2]
+  ]
+  part2 = slopes.map { |r, d| map.trees_on_slope(right: r, down: d) }.reduce(:*)
+  puts "in part 2, the multiplied answer is #{part2}"
 end
 
 __END__
