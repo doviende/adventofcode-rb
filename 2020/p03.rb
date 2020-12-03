@@ -1,6 +1,24 @@
 #!/usr/bin/env ruby
 
+class MapGrid
+  def initialize(lines)
+    @textlines = lines
+  end
+
+  # given right and down, we continually move in those increments and count
+  # trees hit. if we hit the right edge of the map, continue back wrapping
+  # on the left side (cylinder). End when we hit the bottom.
+  # returns: count of trees hit
+  def trees_on_slope(right:, down:)
+    0
+  end
+end
+
 if __FILE__ == $0
+  lines = DATA.readlines(chomp: true)
+  map = MapGrid.new(lines)
+  part1 = map.trees_on_slope(right: 3, down: 1)
+  puts "in part 1, going right 3 and down 1, we hit #{part1} trees."
 end
 
 __END__
