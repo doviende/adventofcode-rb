@@ -2,7 +2,9 @@
 
 class MapGrid
   def initialize(lines)
-    @textlines = lines
+    @text_lines = lines
+    @width = lines.first.size
+    @height = lines.size
   end
 
   # given right and down, we continually move in those increments and count
@@ -10,7 +12,23 @@ class MapGrid
   # on the left side (cylinder). End when we hit the bottom.
   # returns: count of trees hit
   def trees_on_slope(right:, down:)
-    0
+    x = 0
+    y = 0
+    count = 0
+    loop do
+      count += 1 if map(x, y) == "#"
+      x += right
+      y += down
+      break if y >= @height
+    end
+    count
+  end
+
+  # top left is 0,0, moving right and down is positive.
+  def map(x, y)
+    return nil if y >= @height
+
+    @text_lines[y][x % @width]
   end
 end
 
