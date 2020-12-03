@@ -34,8 +34,8 @@ end
 
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
-  map = MapGrid.new(lines)
-  part1 = map.trees_on_slope(right: 3, down: 1)
+  grid = MapGrid.new(lines)
+  part1 = grid.trees_on_slope(right: 3, down: 1)
   puts "in part 1, going right 3 and down 1, we hit #{part1} trees."
 
   # part 2: do the same as above, but with 5 different slopes.
@@ -52,7 +52,7 @@ if __FILE__ == $0
     [7, 1],
     [1, 2]
   ]
-  part2 = slopes.map { |r, d| map.trees_on_slope(right: r, down: d) }.reduce(:*)
+  part2 = slopes.map { |r, d| grid.trees_on_slope(right: r, down: d) }.reduce(:*)
   puts "in part 2, the multiplied answer is #{part2}"
 end
 
