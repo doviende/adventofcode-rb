@@ -25,15 +25,70 @@ class PassportRecord
     :pid,
   ].to_set.freeze
 
+  module ValidationHelpers
+    module_function
+
+    def valid_byr?(value)
+      return false unless value.length == 4
+
+      num = value.to_i
+      num >= 1920 && num <= 2002
+    end
+
+    def valid_iyr?(value)
+      return false unless value.length == 4
+
+      num = value.to_i
+      num >= 2010 && num <= 2020
+    end
+
+    def valid_eyr?(value)
+      return false unless value.length == 4
+
+      num = value.to_i
+      num >= 2020 && num <= 2030
+    end
+
+    def valid_hgt?(value)
+      return false unless m = /^([0-9]+)(cm|in)$/.match(value)
+
+      num = m[1].to_i
+      if m[2] == "cm"
+        num >= 150 && num <= 193
+      else
+        num >= 59 && num <= 76
+      end
+    end
+
+    def valid_hcl?(value)
+      m = /^#[0-9a-f]{6}$/.match(value)
+      m.present?
+    end
+
+    def valid_ecl?(value)
+      valid = [:amb, :blu, :brn, :gry, :grn, :hzl, :oth].to_set
+      valid.include? value.to_sym
+    end
+
+    def valid_pid?(value)
+      m = /^[0-9]{9}$/.match(value)
+      m.present?
+    end
+
+    def valid_cid?(value)
+      true
+    end
+  end
+
   def initialize(lines)
-    @text_items = lines.join(" ").split(/[ \n]+/)
+    @text_items = Array(lines).join(" ").split(/[ \n]+/)
     # puts "received #{@text_items}"
     @fields = nil # hash of parsed values
     @errors = {}
   end
 
   def valid?
-    all_keys_valid? && all_required_keys_present?
+    all_keys_valid? && all_required_keys_present? && all_values_valid?
   end
 
   def fields
@@ -50,6 +105,10 @@ class PassportRecord
     @errors[:missing_keys].blank?
   end
 
+  def all_values_valid?
+    fields.all? { |key, value| ValidationHelpers.send("valid_#{key}?", value) }
+  end
+
   def parse_text(text)
     hash = {}
     @text_items.each do |item|
@@ -61,7 +120,8 @@ class PassportRecord
 
   def to_s
     valid?
-    "<PassportRecord, keys: #{fields.keys.sort.reject { |i| i==:cid }}, invalid: #{@errors[:invalid_keys]}, missing: #{@errors[:missing_keys]}>"
+    values = fields.keys.reject { |k| k==:cid }.sort.map { |k| "#{k}:#{fields[k]}" }
+    "<PassportRecord, #{values}, missing: #{@errors[:missing_keys]}>"
   end
 end
 
@@ -83,11 +143,11 @@ if __FILE__ == $0
   bad = 0
   passports.each do |p|
     if p.valid?
-      #puts "valid? #{p.to_s}"
+      puts "valid? #{p.to_s}"
       good += 1
     else
       bad += 1
-      #puts "       #{p.to_s}"
+      # puts "       #{p.to_s}"
     end
   end
   puts "part 1: found #{good} valid passports, #{bad} bad, #{good+bad} total"
