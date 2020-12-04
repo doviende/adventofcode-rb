@@ -1,6 +1,71 @@
 #!/usr/bin/env ruby
+require "set"
+
+class PassportRecord
+  # receive lines of text, parse them for fields like
+  # key:value. Valid keys are:
+  KeyDescriptions = {
+    byr: "Birth Year",
+    iyr: "Issue Year",
+    eyr: "Expiration Year",
+    hgt: "Height",
+    hcl: "Hair Color",
+    ecl: "Eye Color",
+    pid: "Passport ID",
+    cid: "Country ID",
+  }.freeze
+  RequiredKeys = [
+    :byr,
+    :iyr,
+    :eyr,
+    :hgt,
+    :hcl,
+    :ecl,
+    :pid,
+  ].to_set.freeze
+
+  def initialize(lines)
+    @text_lines = lines.join(" ")
+    @fields = nil # hash of parsed values
+  end
+
+  def valid?
+    all_keys_valid? && all_required_keys_present?
+  end
+
+  def fields
+    @fields ||= parse_text(@text_lines)
+  end
+
+  def all_keys_valid?
+    true
+  end
+
+  def all_required_keys_present?
+    true
+  end
+
+  def parse_text(text)
+    return {}
+  end
+end
 
 if __FILE__ == $0
+  buffer = []
+  passports = []
+  DATA.readlines(chomp: true).each do |line|
+    if line == ""
+      passports.push(PassportRecord.new(buffer))
+      buffer = []
+      next
+    end
+    buffer.push(line)
+  end
+  count = 0
+  passports.each do |p|
+    count += 1 if p.valid?
+  end
+  puts "part 1: found #{count} valid passports"
 end
 
 __END__
