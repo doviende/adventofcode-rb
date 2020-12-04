@@ -87,8 +87,8 @@ class PassportRecord
     @errors = {}
   end
 
-  def valid?
-    all_keys_valid? && all_required_keys_present? && all_values_valid?
+  def valid?(part1: true)
+    all_keys_valid? && all_required_keys_present? && (part1 || all_values_valid?)
   end
 
   def fields
@@ -143,7 +143,7 @@ if __FILE__ == $0
   bad = 0
   passports.each do |p|
     if p.valid?
-      puts "valid? #{p.to_s}"
+      # puts "valid? #{p.to_s}"
       good += 1
     else
       bad += 1
@@ -151,6 +151,19 @@ if __FILE__ == $0
     end
   end
   puts "part 1: found #{good} valid passports, #{bad} bad, #{good+bad} total"
+
+  good = 0
+  bad = 0
+  passports.each do |p|
+    if p.valid?(part1: false)
+      # puts "valid? #{p.to_s}"
+      good += 1
+    else
+      bad += 1
+      # puts "       #{p.to_s}"
+    end
+  end
+  puts "part 2: found #{good} valid passports, #{bad} bad, #{good+bad} total"
 end
 
 __END__
