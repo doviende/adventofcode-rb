@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require "set"
+require "active_support/core_ext/object/blank"
 
 class PassportRecord
   # receive lines of text, parse them for fields like
@@ -25,8 +26,10 @@ class PassportRecord
   ].to_set.freeze
 
   def initialize(lines)
-    @text_lines = lines.join(" ")
+    @text_items = lines.join(" ").split(/[ \n]+/)
+    # puts "received #{@text_items}"
     @fields = nil # hash of parsed values
+    @errors = {}
   end
 
   def valid?
@@ -34,38 +37,60 @@ class PassportRecord
   end
 
   def fields
-    @fields ||= parse_text(@text_lines)
+    @fields ||= parse_text(@text_items)
   end
 
   def all_keys_valid?
-    true
+    @errors[:invalid_keys] ||= fields.keys.reject { |key| !KeyDescriptions[key].nil? }
+    @errors[:invalid_keys].blank?
   end
 
   def all_required_keys_present?
-    true
+    @errors[:missing_keys] ||= RequiredKeys.reject { |key| fields.keys.include? key }
+    @errors[:missing_keys].blank?
   end
 
   def parse_text(text)
-    return {}
+    hash = {}
+    @text_items.each do |item|
+      kv = item.split(':')
+      hash[kv[0].to_sym] = kv[1]
+    end
+    hash
+  end
+
+  def to_s
+    valid?
+    "<PassportRecord, keys: #{fields.keys.sort.reject { |i| i==:cid }}, invalid: #{@errors[:invalid_keys]}, missing: #{@errors[:missing_keys]}>"
   end
 end
 
 if __FILE__ == $0
   buffer = []
   passports = []
+  passport_count = 0
   DATA.readlines(chomp: true).each do |line|
     if line == ""
+      passport_count += 1
       passports.push(PassportRecord.new(buffer))
       buffer = []
       next
     end
     buffer.push(line)
   end
-  count = 0
+  puts "found #{passport_count} passports"
+  good = 0
+  bad = 0
   passports.each do |p|
-    count += 1 if p.valid?
+    if p.valid?
+      #puts "valid? #{p.to_s}"
+      good += 1
+    else
+      bad += 1
+      #puts "       #{p.to_s}"
+    end
   end
-  puts "part 1: found #{count} valid passports"
+  puts "part 1: found #{good} valid passports, #{bad} bad, #{good+bad} total"
 end
 
 __END__
@@ -1165,3 +1190,4 @@ byr:1991
 iyr:1930 eyr:2024
 
 ecl:oth hcl:#602927 eyr:2025 iyr:2013 hgt:151cm byr:1992 pid:812583062
+
