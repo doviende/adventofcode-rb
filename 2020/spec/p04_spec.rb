@@ -41,9 +41,10 @@ describe "2020 p4" do
     end
 
     context "#valid?" do
-      subject { instance.valid? }
+      subject { instance.valid?(part1: part1) }
 
       context "valid examples" do
+        let(:part1) { false }
         shared_examples_for 'valid passport' do |text|
           let(:instance) { described_class.new(text) }
           it { is_expected.to eq true }
@@ -62,6 +63,7 @@ describe "2020 p4" do
       end
 
       context "invalid examples" do
+        let(:part1) { false }
         shared_examples_for 'invalid passport' do |text|
           let(:instance) { described_class.new(text) }
           it { is_expected.to eq false }
