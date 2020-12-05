@@ -1,6 +1,55 @@
 #!/usr/bin/env ruby
 
+class SeatAddress
+  # takes in a binary space partitioning description
+  # first 7 chars are Y axis, each spot dividing by 2,
+  # and F or B indicating front or back of that level.
+  # F is closer to y=0, B is closer to y=127.
+  # The x-axis is left side at 0, right side at 7
+  def initialize(bsp)
+    @bsp = bsp
+    @bsp_row = bsp.chars[0..6]
+    @bsp_column = bsp.chars[7..9]
+    @row = nil
+    @column = nil
+    @seat_id = nil
+  end
+
+  # 0 to 127
+  def row
+    @row ||= calc_spot(bsp: @bsp_row, max: 127, lower: "F")
+  end
+
+  # 0 to 7
+  def column
+    @column ||= calc_spot(bsp: @bsp_column, max: 7, lower: "L")
+  end
+
+  def seat_id
+    @seat_id ||= (row * 8) + column
+  end
+
+  def calc_spot(bsp:, max:, lower:)
+    step = (max + 1) / 2
+    # puts "bsp: #{bsp}"
+    bsp.each do |which|
+      # puts "max: #{max}, step: #{step}"
+      if which == lower
+        # puts "#{which}: subtract"
+        max = max - step
+      else
+        # puts "#{which}: stay"
+      end
+      step = step / 2
+    end
+    max
+  end
+end
+
 if __FILE__ == $0
+  lines = DATA.readlines(chomp: true)
+  part1 = lines.map { |line| SeatAddress.new(line).seat_id }.max
+  puts "part 1: max seat_id is #{part1}"
 end
 
 __END__
