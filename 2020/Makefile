@@ -15,3 +15,5 @@ new:
 	git add ${DATENAME}
 	git commit -m "${DATEBRANCH} - empty file"
 
+merge: test
+	./merge_branch.sh
