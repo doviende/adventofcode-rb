@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+require "set"
 
 class SeatAddress
   # takes in a binary space partitioning description
@@ -48,8 +49,14 @@ end
 
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
-  part1 = lines.map { |line| SeatAddress.new(line).seat_id }.max
+  seats = lines.map { |line| SeatAddress.new(line).seat_id }.to_set
+  part1 = seats.max
   puts "part 1: max seat_id is #{part1}"
+
+  # part 2: in the list of tickets, some at the front and some at the back are missing,
+  # but then all the other seats are full. our seat is the one missing seat amongst those.
+  my_seat = (seats.min..seats.max).reject { |x| seats.include? x }.first
+  puts "part 2: my seat is #{my_seat}"
 end
 
 __END__
