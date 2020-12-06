@@ -1,6 +1,27 @@
 #!/usr/bin/env ruby
 require "set"
 
+class AnswerGroup
+  def initialize
+    @answers = {}
+    @answers.default = 0
+    @num_people = 0
+  end
+
+  # add another person's answers
+  def add(ans_str)
+    @num_people += 1
+    ans_str.chars.each do |c|
+      @answers[c] += 1
+    end
+  end
+
+  # return how many answers were given by everyone
+  def totals
+    @answers.select { |k, v| v == @num_people }.size
+  end
+end
+
 if __FILE__ == $0
   accum = [].to_set
   totals = []
@@ -9,10 +30,24 @@ if __FILE__ == $0
     if line.empty? || i == lines.size - 1
       totals.push(accum.size)
       accum = [].to_set
+      next
     end
     line.chars.each { |c| accum.add(c) }
   end
   puts "part 1: sum of unique counts per group is #{totals.sum}"
+
+  # part 2: find answers that were given by all people in the group.
+  totals = []
+  accum = AnswerGroup.new
+  lines.each.with_index do |line, i|
+    if line.empty? || i == lines.size - 1
+      totals.push(accum.totals)
+      accum = AnswerGroup.new
+      next
+    end
+    accum.add(line)
+  end
+  puts "part 2: sum of answers that everyone in the group gave is #{totals.sum}"
 end
 
 __END__
