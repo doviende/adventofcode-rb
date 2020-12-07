@@ -1,6 +1,86 @@
 #!/usr/bin/env ruby
+require "set"
+require "pry"
+
+class BagRules
+  def initialize
+    @reverse = {}
+  end
+
+  def add_rule(outer, inner_list)
+    inner_list.each do |inner|
+      @reverse[inner.desc] ||= [].to_set
+      @reverse[inner.desc].add(outer.desc)
+    end
+  end
+
+  # given an adjective and a colour, find all other bags
+  # that such a bag can be nested in.
+  # Start at the designated spot in @reverse, and then iterate
+  # through all the reverses to accumulate a list of outers found so far.
+  def find_outers(adjective, colour)
+    outers = [].to_set
+    start = "#{adjective} #{colour}"
+    list = [start]
+    loop do
+      next_list = list.flat_map { |x| @reverse[x].to_a }.reject { |x| outers.include? x }.to_set
+      puts "next_list: #{next_list}"
+      break if next_list.empty?
+      list = next_list
+      list.each { |x| outers.add(x) }
+    end
+    outers
+  end
+end
+
+
+class RuleItem
+  attr_reader :number, :adjective, :colour
+
+  def initialize(desc_str)
+    @desc_items = desc_str.split(' ')
+    @number = @desc_items[0].to_i
+    @adjective = @desc_items[1]
+    @colour = @desc_items[2]
+    @desc = nil
+  end
+
+  def desc
+    @desc ||= "#{adjective} #{colour}"
+  end
+end
+
+
+class LineParser
+  ItemPattern = /([0-9]* [a-z]* [a-z]*) bags?[,.] ?/
+
+  def initialize(rules)
+    @rules = rules
+  end
+
+  def parse(line)
+    m = /(.*) bags contain (.*)/.match(line)
+    outer = RuleItem.new("1 #{m[1]}")
+    inner_list = parse_inner(m[2])
+    @rules.add_rule(outer, inner_list)
+  end
+
+  def parse_inner(text)
+    # text is the bags contained in another
+    items = text.scan(ItemPattern)
+    items.map { |m| RuleItem.new(m.first) }
+  end
+end
 
 if __FILE__ == $0
+  lines = DATA.readlines(chomp: true)
+  rules = BagRules.new
+  parser = LineParser.new(rules)
+  lines.each do |line|
+    parser.parse(line)
+  end
+  part1 = rules.find_outers("shiny", "gold").size
+  puts "for part 1, #{part1} different bags can contain a shiny gold bag"
 end
 
 __END__
