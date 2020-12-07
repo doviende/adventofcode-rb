@@ -5,3 +5,6 @@ test: rvm
 
 rvm:
 	bash --login -c "rvm use 2.6"
+
+merge: test
+	../lib/merge_branch.sh

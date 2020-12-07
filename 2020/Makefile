@@ -16,4 +16,4 @@ new:
 	git commit -m "${DATEBRANCH} - empty file"
 
 merge: test
-	./merge_branch.sh
+	../lib/merge_branch.sh
