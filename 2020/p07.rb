@@ -4,10 +4,12 @@ require "pry"
 
 class BagRules
   def initialize
+    @rules = {}
     @reverse = {}
   end
 
   def add_rule(outer, inner_list)
+    @rules[outer.desc] = inner_list
     inner_list.each do |inner|
       @reverse[inner.desc] ||= [].to_set
       @reverse[inner.desc].add(outer.desc)
@@ -30,6 +32,10 @@ class BagRules
       list.each { |x| outers.add(x) }
     end
     outers
+  end
+
+  def count_inners(key)
+    @rules[key].map { |item| item.number + (item.number * count_inners(item.desc)) }.sum
   end
 end
 
@@ -81,6 +87,9 @@ if __FILE__ == $0
   end
   part1 = rules.find_outers("shiny", "gold").size
   puts "for part 1, #{part1} different bags can contain a shiny gold bag"
+
+  part2 = rules.count_inners("shiny gold")
+  puts "part 2: a shiny gold bag contains #{part2} other bags"
 end
 
 __END__
