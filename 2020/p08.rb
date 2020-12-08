@@ -61,8 +61,38 @@ class ProgramRunner
     end
   end
 
+  def reset(new_program)
+    @program = new_program
+    @ip = 0
+    @accum = 0
+    @done = {}
+  end
+
+  def flip(inst)
+    return "jmp" if inst == "nop"
+    return "nop" if inst == "jmp"
+
+    raise StandardError.new("not a flippable instruction")
+  end
+
   def find_termination_swap
-    
+    orig = @program.dup
+    orig.each.with_index do |line, index|
+      inst = line[0]
+      num = line[1]
+      begin
+        next if inst == "acc"
+
+        reset(orig.dup)
+        puts "flipping #{index} from #{inst} to #{flip(inst)}"
+        @program[index] = [flip(inst), num]
+        execute
+      rescue LoopInterrupt
+        next
+      end
+    end
+  rescue DoneInterrupt
+    @accum
   end
 end
 
@@ -74,6 +104,9 @@ if __FILE__ == $0
   runner = ProgramRunner.new(program)
   part1 = runner.run
   puts "part 1: after running the program, it hit #{runner.ip} twice, returning #{part1}"
+
+  part2 = runner.find_termination_swap
+  puts "part 2: after fixing the program, the accumulator was #{part2}"
 end
 
 __END__
