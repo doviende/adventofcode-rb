@@ -1,6 +1,67 @@
 #!/usr/bin/env ruby
+require "pry"
+
+class ProgramRunner
+  module Instructions
+    module_function
+
+    def acc(val)
+      lambda {
+        @accum += val
+        @ip += 1
+      }
+    end
+
+    def jmp(val)
+      lambda {
+        @ip += val
+      }
+    end
+
+    def nop(val)
+      lambda {
+        @ip += 1
+      }
+    end
+  end
+
+  attr_reader :ip, :program, :accum
+  class DoneInterrupt < StandardError; end
+
+  def initialize(program)
+    # takes an array of [inst, val]
+    @program = program
+    @done = {}
+    @ip = 0
+    @accum = 0
+  end
+
+  def with_ip_tracking
+    raise DoneInterrupt if @done[@ip]
+
+    @done[@ip] = true
+    self.instance_exec &Instructions.send(*yield)
+  end
+
+  def run
+    loop do
+      with_ip_tracking do
+        @program[@ip]
+      end
+    end
+  rescue DoneInterrupt
+    @accum
+  end
+end
 
 if __FILE__ == $0
+  lines = DATA.readlines(chomp: true)
+  program = lines.map do |inst|
+    inst.split(' ').yield_self { |i, n| [i, n.to_i] }
+  end
+  runner = ProgramRunner.new(program)
+  part1 = runner.run
+  puts "part 1: after running the program, it hit #{runner.ip} twice, returning #{part1}"
 end
 
 __END__
