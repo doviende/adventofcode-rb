@@ -26,7 +26,9 @@ class ProgramRunner
   end
 
   attr_reader :ip, :program, :accum
-  class DoneInterrupt < StandardError; end
+  class RunnerInterrupt < StandardError; end
+  class LoopInterrupt < RunnerInterrupt; end
+  class DoneInterrupt < RunnerInterrupt; end
 
   def initialize(program)
     # takes an array of [inst, val]
@@ -36,21 +38,31 @@ class ProgramRunner
     @accum = 0
   end
 
-  def with_ip_tracking
-    raise DoneInterrupt if @done[@ip]
+  def with_code_context
+    raise LoopInterrupt if @done[@ip]
+    raise DoneInterrupt if @ip == @program.size
 
     @done[@ip] = true
     self.instance_exec &Instructions.send(*yield)
   end
 
+  # part 1
   def run
+    execute
+  rescue LoopInterrupt
+    @accum
+  end
+
+  def execute
     loop do
-      with_ip_tracking do
+      with_code_context do
         @program[@ip]
       end
     end
-  rescue DoneInterrupt
-    @accum
+  end
+
+  def find_termination_swap
+    
   end
 end
 
