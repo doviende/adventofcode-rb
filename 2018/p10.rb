@@ -1,8 +1,71 @@
 #!/usr/bin/env ruby
 
+class StarField
+  class ParseError < StandardError; end
+  StarInitPattern = /^position=<([-0-9]*), *([-0-9]*)> velocity=<([-0-9]*), *([-0-9]*)>$/
+
+  Star = Struct.new(:x, :y, :dx, :dy)
+
+  def initialize
+    @stars = []
+    @xlimit = 100
+    @ylimit = 40
+  end
+
+  def add_star(star_text)
+    # position=<-41150,  41504> velocity=< 4, -4>
+    m = StarInitPattern.match(star_text)
+    raise ParseError.new("failed to match: #{star_text}") unless m
+
+    @stars.push Star.new(m[1], m[2], m[3], m[4])
+  end
+
+  def animate
+    advance(10000)
+    loop do
+      display
+      advance(1)
+    end
+  end
+
+  def advance(n)
+    # move every star by n steps
+    stars.each do |star|
+      star.x = star.x + n*dx
+      star.y = star.y + n*dy
+    end
+  end
+
+  def display
+    # display 100x40 grid
+    linehash = {}
+    @stars.each do |star|
+      if star.y >= 0 && star.y < @ylimit
+        linehash[star.y] ||= [].to_set
+        linehash[star.y].add(star.x) if (star.x >= 0 && star.x < @xlimit)
+      end
+    end
+    (0..@ylimit-1).each do |y|
+      line = []
+      (0..@xlimit-1).each do |x|
+        if linehash[y].include? x
+          line.push("*")
+        else
+          line.push(" ")
+        end
+      end
+      puts line.join('')
+    end
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
-
+  field = StarField.new
+  lines.each do |line|
+    field.add_star(line)
+  end
+  field.animate
 end
 
 __END__
