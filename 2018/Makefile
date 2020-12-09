@@ -1,4 +1,4 @@
-.PHONY: test rvm
+.PHONY: test rvm merge new
 
 test: rvm
 	bundle exec rspec -fd spec/*_spec.rb
@@ -8,3 +8,6 @@ rvm:
 
 merge: test
 	../lib/merge_branch.sh
+
+new: ../lib/template.rb ../lib/setup_new.sh
+	../lib/setup_new.sh
