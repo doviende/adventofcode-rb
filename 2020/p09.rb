@@ -1,8 +1,54 @@
 #!/usr/bin/env ruby
+require 'pry-byebug'
+
+class SequenceValidatorBase
+  def initialize(preamble)
+    @width = preamble.size
+    @buffer = preamble # the set of numbers currently
+    @possible_sums = {} # how many different ways are there to sum to this key? when 0, remove
+  end
+
+  def calculate
+  end
+
+  def valid_next?(value)
+    !@possible_sums[value].nil?
+  end
+
+  def append(value)
+    removed = @buffer.shift
+    yield removed if block_given?
+    @buffer.push(value)
+    calculate
+  end
+end
+
+class N2SequenceValidator < SequenceValidatorBase
+  def calculate
+    @buffer.each do |x|
+      @buffer.each do |y|
+        @possible_sums[x+y] ||= 1
+      end
+    end
+    self
+  end
+end
+
 
 if __FILE__ == $0
-  lines = DATA.readlines(chomp: true)
+  lines = DATA.readlines(chomp: true).map(&:to_i).freeze
+  preamble = []
+  copy = lines.dup
+  25.times do |i|
+    preamble.push(copy.shift)
+  end
+  validator = N2SequenceValidator.new(preamble).calculate
+  part1 = copy.each do |item|
+    break item unless validator.valid_next?(item)
 
+    validator.append(item)
+  end
+  puts "part 1: first item that isn't a sum of the previous 25 numbers is #{part1}"
 end
 
 __END__
