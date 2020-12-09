@@ -1,6 +1,21 @@
 #!/usr/bin/env ruby
 require 'pry-byebug'
 
+# Notes about false start:
+# Initially what I tried to do was to write the linear solution where at
+# each stage, we'd track the available sums and how to make them, and then
+# when shifting we'd remove the influence of the removed number, and then push
+# the new number and calculate its sums with everything and add them to the hashes.
+# When a sum's reference counter went to 0, it'd be removed.
+#
+# This ran into a snag because i had to record every sum under two indexes
+# (the two numbers that sum to it), and therefore when removing a number it
+# would take longer to go find all the spots the sum count had to be removed.
+#
+# At this point I realized that it was all just premature optimization and I
+# could just do a simpler N^2 method and it'd be fine...and it was.
+
+# part 1
 class SequenceValidatorBase
   def initialize(preamble)
     @width = preamble.size
@@ -17,6 +32,9 @@ class SequenceValidatorBase
 
   def append(value)
     removed = @buffer.shift
+    # here i'm preparing just in case i later want to do something
+    # with the removed number, but if i don't give a block then
+    # it just gets dropped.
     yield removed if block_given?
     @buffer.push(value)
     calculate
@@ -34,6 +52,7 @@ class N2SequenceValidator < SequenceValidatorBase
   end
 end
 
+# part 2
 class ContiguousFinder
   def initialize(sequence)
     @buffer = sequence
