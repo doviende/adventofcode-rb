@@ -34,6 +34,33 @@ class N2SequenceValidator < SequenceValidatorBase
   end
 end
 
+class ContiguousFinder
+  def initialize(sequence)
+    @buffer = sequence
+    @first = 0
+    @last = 1
+  end
+
+  def find(goal)
+    loop do
+      sum = @buffer[@first..@last].sum
+      return answer if sum == goal
+
+      if sum < goal
+        @last += 1
+      else
+        @first += 1
+      end
+    end
+  end
+
+  private
+
+  def answer
+    slice = @buffer[@first..@last].sort
+    slice.first + slice.last
+  end
+end
 
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true).map(&:to_i).freeze
@@ -49,6 +76,10 @@ if __FILE__ == $0
     validator.append(item)
   end
   puts "part 1: first item that isn't a sum of the previous 25 numbers is #{part1}"
+
+  finder = ContiguousFinder.new(lines)
+  part2 = finder.find(part1)
+  puts "part 2: the sum of the smallest and biggest of a contiguous block adding to #{part1} is #{part2}"
 end
 
 __END__
