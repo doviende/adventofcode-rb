@@ -1,8 +1,28 @@
 #!/usr/bin/env ruby
 
-if __FILE__ == $0
-  lines = DATA.readlines(chomp: true)
+# part 1
+def score(list)
+  # score is the number of 1-differences (starting from 0) times
+  # the number of 3-differences, with one more 3-difference on the end.
+  list.sort!
+  list = [0] + list + [list.last + 3]
+  onediffs = 0
+  threediffs = 0
+  list.each_cons(2) do |a, b|
+    diff = b - a
+    if diff == 1
+      onediffs += 1
+    elsif diff == 3
+      threediffs += 1
+    end
+  end
+  onediffs * threediffs
+end
 
+if __FILE__ == $0
+  lines = DATA.readlines(chomp: true).map(&:to_i)
+  part1 = score(lines)
+  puts "part 1 score is #{part1}"
 end
 
 __END__
