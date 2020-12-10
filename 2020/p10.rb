@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+require "active_support/core_ext/object/blank"
+require "set"
 
 # part 1
 def score(list)
@@ -24,14 +26,113 @@ end
 # such that they go from 0 to (max + 3) with each step in between
 # having a difference of either +1, +2, +3.
 class JoltOrderer
+  attr_reader :list
+
   def initialize(list)
-    @list = list # is sorted.
+    @list = SortedSet.new(list)
+    @last = list.sort.last
+    @states = nil
+    @queue = nil
   end
 
+  # notes:
+  # * there's always a solution with every element included.
+  # * sometimes each individual element can be taken out
+  # * after taking an element out of the list, we probably evaluate the remaining
+  #   ones to see if it's still valid.
+  # * make a search tree where we want to see how many nodes we can take out until
+  #   it becomes invalid,
+  # * and then nodes are equivalent if they have the same set of unique elements
+  #   that had to be removed to get to that state.
+  # * states are addressed by the things removed to get to it.
+  # * if a certain number can't be removed in the current set, then it also
+  #   can't be removed in any subset.
+  # * need some sort of way to save sub-solutions
+  # * how do we generate the search nodes? breadth-first testing which can be removed?
+  # * take parent node's list of nodes that can be removed and only check if they
+  #   can be removed from this node.
+  # * generate the list of new nodes to work on, and skip any of them that have already been done.
   def num_arrangements
-    0
+    # generate first removals
+    generate_new_nodes(nil)
+
+    loop do
+      break if queue.empty?
+
+      nextcheck = queue.shift
+      next if states[nextcheck]
+
+      # puts "considering removals: #{nextcheck.total_removed}"
+      if valid_removal? nextcheck
+        states[nextcheck] = 1
+        generate_new_nodes(nextcheck)
+      else
+        states[nextcheck] = 0
+      end
+    end
+    states.values.sum + 1 # nothing removed is a valid state
+  end
+
+  def generate_new_nodes(remstate)
+    # remstate contains a RemovalState that has the items that have been removed so far.
+    # We need to generate a search node that attempts to remove any other element in
+    # the list that is not in remstate
+    if remstate.nil?
+      todo = @list
+    else
+      todo = @list - remstate.total_removed
+    end
+    todo.each do |item|
+      queue.push(RemovalState.new(item, remstate))
+    end
+  end
+
+  def valid_removal?(remstate)
+    return false if remstate.removed == @last
+
+    checklist = [0] + (@list - remstate.total_removed).to_a
+    checklist.each_cons(2) do |a,b|
+      return false unless [1,2,3].include? (b - a)
+    end
+
+    true
+  end
+
+  def states
+    @states ||= {}
+  end
+
+  def queue
+    @queue ||= []
   end
 end
+
+class RemovalState
+  attr_reader :removed
+  attr_reader :total_removed
+
+  def initialize(removed, parent)
+    @removed = removed
+    @parent = parent
+    if parent.nil?
+      @total_removed = [removed].compact.to_set
+    else
+      @total_removed = parent.total_removed.dup.add(removed)
+    end
+  end
+
+  def hash
+    total_removed.hash
+  end
+
+  def ==(other)
+    self.class === other and
+      other.total_removed == total_removed
+  end
+
+  alias eql? ==
+end
+
 
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true).map(&:to_i).sort
