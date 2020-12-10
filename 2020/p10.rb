@@ -4,7 +4,7 @@
 def score(list)
   # score is the number of 1-differences (starting from 0) times
   # the number of 3-differences, with one more 3-difference on the end.
-  list.sort!
+  # list is sorted.
   list = [0] + list + [list.last + 3]
   onediffs = 0
   threediffs = 0
@@ -19,10 +19,28 @@ def score(list)
   onediffs * threediffs
 end
 
+# part 2
+# We have to count the number of valid arrangements of the numbers
+# such that they go from 0 to (max + 3) with each step in between
+# having a difference of either +1, +2, +3.
+class JoltOrderer
+  def initialize(list)
+    @list = list # is sorted.
+  end
+
+  def num_arrangements
+    0
+  end
+end
+
 if __FILE__ == $0
-  lines = DATA.readlines(chomp: true).map(&:to_i)
+  lines = DATA.readlines(chomp: true).map(&:to_i).sort
   part1 = score(lines)
   puts "part 1 score is #{part1}"
+
+  orderer = JoltOrderer.new(lines)
+  part2 = orderer.num_arrangements
+  puts "part 2: the number of unique arrangements is #{part2}"
 end
 
 __END__
