@@ -25,16 +25,6 @@ end
 # We have to count the number of valid arrangements of the numbers
 # such that they go from 0 to (max + 3) with each step in between
 # having a difference of either +1, +2, +3.
-class JoltOrderer
-  attr_reader :list
-
-  def initialize(list)
-    @list = SortedSet.new(list)
-    @last = list.sort.last
-    @states = nil
-    @queue = nil
-  end
-
   # notes:
   # * there's always a solution with every element included.
   # * sometimes each individual element can be taken out
@@ -52,6 +42,37 @@ class JoltOrderer
   # * take parent node's list of nodes that can be removed and only check if they
   #   can be removed from this node.
   # * generate the list of new nodes to work on, and skip any of them that have already been done.
+#
+# New Notes:
+# ok, tried searching in a naive way, and it works for the sample answers, but
+# the actual input is just too huge to do naively.
+# * key insight: whenever 2 neighbours are distance 3, both of those
+#   are non-removable.
+# * if two non-removable ones (due to an empty 3-gap elsewhere) have some
+#   other potentially removable ones in between, but the non-removable ones
+#   are 3 away, then everything in between is unconditionally removable
+# * if everything potentially removable is unconditionally removable, then
+#   the answer is 2^n where in is the unconditionally removable (UR) elements.
+# * if there's a filled gap of size 4+ between some NRs, then the ones in betweenn
+#   are Conditionally Removable (CR), and some of them will always have to be kept
+#   in order to bridge the gap.
+# * so the answer should be 2^UR + f(CR), and maybe we can perform search on the CRs.
+# * the CRs convert into a smaller sub-problem if we keep the right-hand-side, which
+#   acts like the previous @last element (is followed by an invisible 3-gap)
+# * the zero part will have to be changed, perhaps substituted by the previous NR.
+
+class JoltOrderer
+  attr_reader :list
+
+  def initialize(list, first = 0)
+    @list = SortedSet.new(list)
+    @last = list.sort.last
+    @first = first
+    @states = nil
+    @queue = nil
+    @precalculated = 0
+  end
+
   def num_arrangements
     # generate first removals
     generate_new_nodes(nil)
@@ -90,7 +111,7 @@ class JoltOrderer
   def valid_removal?(remstate)
     return false if remstate.removed == @last
 
-    checklist = [0] + (@list - remstate.total_removed).to_a
+    checklist = [@first] + (@list - remstate.total_removed).to_a
     checklist.each_cons(2) do |a,b|
       return false unless [1,2,3].include? (b - a)
     end
