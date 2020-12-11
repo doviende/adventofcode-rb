@@ -111,12 +111,67 @@ class SeatLife
 end
 
 
+class FirstVisibleSeatLife < SeatLife
+  def apply_rules(x, y)
+    # centering at spot (x, y), apply applicable rule to produce
+    # new value for (x, y)
+    # Note: can optimize if we track whether the new state is different here.
+    previous = gridloc(x, y)
+    return FLOOR if previous == FLOOR
+    return OCCUPIED if previous == EMPTY && visible_neighbours_empty(x, y)
+    return EMPTY if previous == OCCUPIED && five_or_more_visible(x, y)
+
+    previous
+  end
+
+  def visible_neighbours_empty(x, y)
+    cycle_through_visible_seats(x, y) do |spot|
+      return false if spot == OCCUPIED
+    end
+
+    true
+  end
+
+  def five_or_more_visible(x, y)
+    howmany = 0
+    cycle_through_visible_seats(x, y) do |spot|
+      howmany += 1 if spot == OCCUPIED
+    end
+
+    howmany >= 5
+  end
+
+  def cycle_through_visible_seats(x, y)
+    convolve do |dx, dy|
+      # dx, dy indicate direction
+      distance = 1
+      spot = nil
+      loop do
+        x_new = x + distance * dx
+        y_new = y + distance * dy
+        spot = gridloc(x_new, y_new)
+        break if spot == nil
+        if spot == FLOOR
+          distance += 1
+          next
+        end
+        break
+      end
+      yield spot
+    end
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
   life = SeatLife.new(lines)
   life.run
   part1 = life.score
   puts "in part1, after steady state, there are #{part1} seats occupied."
+
+  part2life = FirstVisibleSeatLife.new(lines)
+  part2life.run
+  puts "in part2, after steady state, there are #{part2life.score} seats occupied."
 end
 
 __END__
