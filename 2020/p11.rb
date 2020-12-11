@@ -1,9 +1,122 @@
 #!/usr/bin/env ruby
 require "active_support/core_ext/object/blank"
+require "pry-byebug"
+
+class SeatLife
+  FLOOR = ".".freeze
+  EMPTY = "L".freeze
+  OCCUPIED = "#".freeze
+
+  def initialize(lines)
+    @grid_history = []
+    @grid_history[0] = lines
+    @turn = 0
+    @max_x = lines[0].size - 1
+    @max_y = lines.size - 1
+  end
+
+  def run
+    # process turns until hitting steady state
+    loop do
+      add_grid
+      process_turn
+      break if steady_state
+    end
+  end
+
+  def add_grid
+    @grid_history.push([])
+    @turn += 1
+  end
+
+  def process_turn
+    last.each.with_index do |line, y|
+      current.push line.dup
+      line.chars.each.with_index do |char, x|
+        current[y][x] = apply_rules(x, y)
+      end
+      puts "#{last[y]} -> #{current[y]}"
+    end
+  end
+
+  def steady_state
+    current.each.with_index do |line, y|
+      return false if line != last[y]
+    end
+
+    true
+  end
+
+  def current
+    @grid_history[@turn]
+  end
+
+  def last
+    @grid_history[@turn - 1]
+  end
+
+  def gridloc(x, y, turn = @turn - 1)
+    # (0, 0) is top left
+    return nil if x < 0 || y < 0 || x > @max_x || y > @max_y
+
+    @grid_history[turn][y][x]
+  rescue NoMethodError
+    # when the following line is nil
+    nil
+  end
+
+  def apply_rules(x, y)
+    # centering at spot (x, y), apply applicable rule to produce
+    # new value for (x, y)
+    # Note: can optimize if we track whether the new state is different here.
+    previous = gridloc(x, y)
+    return FLOOR if previous == FLOOR
+    return OCCUPIED if previous == EMPTY && neighbours_empty(x, y)
+    return EMPTY if previous == OCCUPIED && four_or_more_occupied(x, y)
+
+    previous
+  end
+
+  def neighbours_empty(x, y, turn = @turn - 1)
+    # from x-1,y-1 to x+1,y+1 must not be "#"
+    convolve do |dx, dy|
+      return false if gridloc(x+dx, y+dy, turn) == OCCUPIED
+    end
+    true
+  end
+
+  def four_or_more_occupied(x, y, turn = @turn - 1)
+    howmany = 0
+    convolve do |dx, dy|
+      howmany += 1 if gridloc(x+dx, y+dy, turn) == OCCUPIED
+    end
+    howmany >= 4
+  end
+
+  def convolve
+    [-1, 0, 1].each do |dy|
+      [-1, 0, 1].each do |dx|
+        next if dx == 0 && dy == 0 # skip center spot
+        yield [dx, dy]
+      end
+    end
+  end
+
+  def score
+    # how many seats are occupied?
+    current.reduce(0) do |sum, line|
+      sum + line.chars.select { |x| x == OCCUPIED }.size
+    end
+  end
+end
+
 
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
-
+  life = SeatLife.new(lines)
+  life.run
+  part1 = life.score
+  puts "in part1, after steady state, there are #{part1} seats occupied."
 end
 
 __END__
