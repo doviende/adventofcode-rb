@@ -15,6 +15,8 @@ class Ship
   RIGHT = "R"
   FORWARD = "F"
 
+  attr_accessor :x, :y
+
   def initialize
     @dir = EAST # direction we are facing
     @x = 0
@@ -23,7 +25,7 @@ class Ship
 
   def manhattan_distance
     # manhattan distance from starting point
-    @x.abs + @y.abs
+    x.abs + y.abs
   end
 
   def move(desc)
@@ -39,18 +41,22 @@ class Ship
     translate(@dir, argument)
   end
 
+  def translated
+    self
+  end
+
   def translate(command, argument)
     raise BadDirectionError unless Directions.include?(command)
 
     case command
     when NORTH
-      @y += argument
+      translated.y += argument
     when SOUTH
-      @y -= argument
+      translated.y -= argument
     when EAST
-      @x += argument
+      translated.x += argument
     when WEST
-      @x -= argument
+      translated.x -= argument
     end
   end
 
@@ -81,20 +87,8 @@ class Part2Ship < Ship
     @y += argument * @waypoint.y
   end
 
-  def translate(command, argument)
-    # now, move the waypoint by this much.
-    raise BadDirectionError unless Directions.include?(command)
-
-    case command
-    when NORTH
-      @waypoint.y += argument
-    when SOUTH
-      @waypoint.y -= argument
-    when EAST
-      @waypoint.x += argument
-    when WEST
-      @waypoint.x -= argument
-    end
+  def translated
+    @waypoint
   end
 
   def turn(command, argument)
