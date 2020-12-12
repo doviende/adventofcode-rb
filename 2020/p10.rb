@@ -155,13 +155,114 @@ class RemovalState
 end
 
 
+class Part2RedoOmg
+  # JoltOrderer was too slow, need to redo it with more math, less search.
+  # a) some items are "non-removable" (NR) because they are 3 apart.
+  # b) every time the nearest 2 NRs are also 3 apart, everything in between
+  #    is "unconditionally removable" (UR), and you can just count them all
+  #    up and the answer is 2 ** UR.size.
+  # c) the only tricky part is if there are "conditionally removable" (CR)
+  #    elements in a space where the nearest NRs are more than 3 apart, because
+  #    every arrangement has to leave at least one of them to bridge the gap.
+  #    So a space of 6 could be spanned by 1 number making 2 3-gaps, or 2 numbers
+  #    making 3 2-gaps, etc. depends on the values present.
+  # d) We can take a shortcut if the gap sizes are at most 4, because it's easy
+  #    to count if we only have to leave 1 in as a bridge.
+
+  class AlgorithmFailError < StandardError; end
+
+  def initialize(lines)
+    @list = [0] + lines + [lines.last + 3] # lines is sorted and to_i
+    @types = nil
+    @conditional_group_sizes = []
+  end
+
+  def types
+    @types ||= {}
+  end
+
+  def find_nonremovables
+    types[0] = :nr # by problem definition
+    @list.each_cons(2) do |a, b|
+      if (b - a) == 3
+        types[a] = :nr
+        types[b] = :nr
+      end
+    end
+  end
+
+  def score
+    process_list
+    ur = types.values.count { |i| i == :ur }
+    conditional_score * (2 ** ur)
+  end
+
+  def process_list
+    find_nonremovables
+    process_removables
+  end
+
+  def process_removables
+    # have a current counter and a search_counter to move ahead.
+    # move the search counter ahead until the next NR, while current_counter
+    # is on the current NR. if (search - current) is <= 3, everything in between
+    # is UR and can just be added to types as such.
+    # If (search - current) is 4, then everything in between is CR.
+    # If (search - current) is > 4, then the easy counting method in conditional_score
+    # won't work and we fail.
+
+    current = 0
+    search = 0
+    loop do
+      search += 1
+      break if search >= @list.size
+      next unless types[@list[search]] == :nr
+
+      # mark things in between current and search
+      if (@list[search] - @list[current] <= 3)
+        type = :ur
+      elsif (@list[search] - @list[current] == 4)
+        type = :cr
+      else
+        raise AlgorithmFailError
+      end
+      between = @list[(current+1)..(search-1)]
+      puts "#{between.size} of #{type}: #{between}"
+      between.each do |item|
+        types[item] = type
+      end
+      if type == :cr
+        @conditional_group_sizes.push(between.size)
+      end
+      current = search
+    end
+  end
+
+  def conditional_score
+    # approximation, only works if there are no conditional gaps bigger than 4,
+    # so that we can leave any single element between.
+    # We must choose to leave at least 1 in: N ways to choose 1.
+    # We could choose 2: N choose 2 = 1 (if 2 elements), or 3 if 3 elements
+    # or we could choose to leave all in: 1
+    @conditional_group_sizes.reduce(1) do |accum, size|
+      if size == 1
+        accum
+      elsif size == 2
+        accum * (2 + 1)
+      elsif size == 3
+        accum * (3 + 3 + 1)
+      end
+    end
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true).map(&:to_i).sort
+  puts lines
   part1 = score(lines)
   puts "part 1 score is #{part1}"
 
-  orderer = JoltOrderer.new(lines)
-  part2 = orderer.num_arrangements
+  part2 = Part2RedoOmg.new(lines).score
   puts "part 2: the number of unique arrangements is #{part2}"
 end
 
