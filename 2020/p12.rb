@@ -1,9 +1,76 @@
 #!/usr/bin/env ruby
 require "active_support/core_ext/object/blank"
 
+class Ship
+  class BadDirectionError < StandardError; end
+  class BadAngleError < StandardError; end
+
+  Directions = [
+    NORTH = "N",
+    EAST = "E",
+    SOUTH = "S",
+    WEST = "W",
+  ]
+  LEFT = "L"
+  RIGHT = "R"
+  FORWARD = "F"
+
+  def initialize
+    @dir = EAST # direction we are facing
+    @x = 0
+    @y = 0
+  end
+
+  def manhattan_distance
+    # manhattan distance from starting point
+    @x.abs + @y.abs
+  end
+
+  def move(desc)
+    command = desc[0]
+    argument = desc[1..].to_i
+    return turn(command, argument) if [LEFT, RIGHT].include? command
+    return translate(@dir, argument) if command == FORWARD
+
+    translate(command, argument)
+  end
+
+  def translate(command, argument)
+    raise BadDirectionError unless Directions.include?(command)
+
+    case command
+    when NORTH
+      @y += argument
+    when SOUTH
+      @y -= argument
+    when EAST
+      @x += argument
+    when WEST
+      @x -= argument
+    end
+  end
+
+  def turn(command, argument)
+    raise BadDirectionError unless [LEFT, RIGHT].include?(command)
+    raise BadAngleError unless [90, 180, 270].include?(argument)
+
+    amount = argument / 90
+    if command == LEFT
+      amount = -1 * amount
+    end
+    current_idx = Directions.index(@dir)
+    dir_idx = (current_idx + amount) % 4
+    @dir = Directions[dir_idx]
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
-
+  ship = Ship.new
+  lines.each do |desc|
+    ship.move(desc)
+  end
+  puts "part 1: ship ends #{ship.manhattan_distance} away from the start"
 end
 
 __END__
