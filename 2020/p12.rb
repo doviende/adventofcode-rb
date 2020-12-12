@@ -30,9 +30,13 @@ class Ship
     command = desc[0]
     argument = desc[1..].to_i
     return turn(command, argument) if [LEFT, RIGHT].include? command
-    return translate(@dir, argument) if command == FORWARD
+    return forward(argument) if command == FORWARD
 
     translate(command, argument)
+  end
+
+  def forward(argument)
+    translate(@dir, argument)
   end
 
   def translate(command, argument)
@@ -64,6 +68,80 @@ class Ship
   end
 end
 
+
+class Part2Ship < Ship
+  def initialize
+    @x = 0
+    @y = 0
+    @waypoint = Waypoint.new
+  end
+
+  def forward(argument)
+    @x += argument * @waypoint.x
+    @y += argument * @waypoint.y
+  end
+
+  def translate(command, argument)
+    # now, move the waypoint by this much.
+    raise BadDirectionError unless Directions.include?(command)
+
+    case command
+    when NORTH
+      @waypoint.y += argument
+    when SOUTH
+      @waypoint.y -= argument
+    when EAST
+      @waypoint.x += argument
+    when WEST
+      @waypoint.x -= argument
+    end
+  end
+
+  def turn(command, argument)
+    raise BadDirectionError unless [LEFT, RIGHT].include?(command)
+    raise BadAngleError unless [90, 180, 270].include?(argument)
+
+    if argument == 180
+      @waypoint.flip
+    elsif (argument == 90 && command == LEFT) || (argument == 270 && command == RIGHT)
+      @waypoint.left
+    else
+      @waypoint.right
+    end
+  end
+end
+
+class Waypoint
+  attr_accessor :x, :y
+
+  def initialize
+    @x = 10
+    @y = 1
+  end
+
+  def left
+    # rotate 90 left: (x, y) -> (-y, x)
+    x_0 = @x
+    y_0 = @y
+    @x = -y_0
+    @y = x_0
+  end
+
+  def right
+    # rotate 90 right: (x, y) -> (y, -x)
+    x_0 = @x
+    y_0 = @y
+    @x = y_0
+    @y = -x_0
+  end
+
+  def flip
+    # 180
+    @x = -@x
+    @y = -@y
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
   ship = Ship.new
@@ -71,6 +149,11 @@ if __FILE__ == $0
     ship.move(desc)
   end
   puts "part 1: ship ends #{ship.manhattan_distance} away from the start"
+  ship = Part2Ship.new
+  lines.each do |desc|
+    ship.move(desc)
+  end
+  puts "part 2: ship ends #{ship.manhattan_distance} away from the start"
 end
 
 __END__
