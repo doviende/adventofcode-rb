@@ -19,15 +19,15 @@ class MultFinder
 
   def find_multiplier_for(n, previous_mult = 0, priors = [])
     # multiply @base by successive ints mod n until we hit remainder_for(n)
-    puts "finding multiplier for #{n}:"
     extra = priors.reduce(:lcm) || 1
     multiplier = nil
     (1..).each do |m|
       multiplier = previous_mult + m*extra
       remainder = (@base * multiplier) % n
-      puts "#{n} with mult #{multiplier}: remainder is #{remainder}, searching for #{remainder_for(n)}"
+      # puts "#{n} with mult #{multiplier}: remainder is #{remainder}, searching for #{remainder_for(n)}"
       break if remainder == remainder_for(n)
     end
+    puts "finding multiplier for #{n}, adding LCM(#{priors.join(",")}) = #{extra}: #{multiplier}"
     multiplier
   end
 
@@ -39,9 +39,9 @@ class MultFinder
       priors.push k
     end
     answer = @base * mult
-    @offsets.keys.each do |k|
-      puts "#{k} - #{answer} % #{k} = #{k - (answer % k)}"
-    end
+    # @offsets.keys.each do |k|
+    #   puts "#{k} - #{answer} % #{k} = #{k - (answer % k)}"
+    #    end
     answer
   end
 end
