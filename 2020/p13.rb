@@ -17,23 +17,28 @@ class MultFinder
     (n - @offsets[n]) % n
   end
 
-  def find_multiplier_for(n)
+  def find_multiplier_for(n, previous_mult = 0, priors = [])
     # multiply @base by successive ints mod n until we hit remainder_for(n)
     puts "finding multiplier for #{n}:"
+    extra = priors.reduce(:lcm) || 1
     multiplier = nil
     (1..).each do |m|
-      multiplier = m
-      remainder = (@base * m) % n
-      puts "#{n} with mult #{m}: remainder is #{remainder}, searching for #{remainder_for(n)}"
-      break if (@base * m) % n == remainder_for(n)
+      multiplier = previous_mult + m*extra
+      remainder = (@base * multiplier) % n
+      puts "#{n} with mult #{multiplier}: remainder is #{remainder}, searching for #{remainder_for(n)}"
+      break if remainder == remainder_for(n)
     end
     multiplier
   end
 
   def find_number
-    mults = @offsets.keys.map { |k| find_multiplier_for(k) }
-    answer = @base * mults.reduce(:*)
-    puts "mults: #{mults} --> #{answer}"
+    mult = 0
+    priors = []
+    @offsets.keys.reject { |k| k==@base }.each do |k|
+      mult = find_multiplier_for(k, mult, priors)
+      priors.push k
+    end
+    answer = @base * mult
     @offsets.keys.each do |k|
       puts "#{k} - #{answer} % #{k} = #{k - (answer % k)}"
     end
@@ -80,6 +85,13 @@ if __FILE__ == $0
   #
   # What do we do when there are more numbers? it was easy to just add 13 a couple times and get to the right value mod 19,
   # but then what's the next one? i guess we add LCM(13,19) over and over until it matches.
+  #
+  # ok, summary again.
+  # * the first ID is the base.
+  # * we take the second ID, and find the simples f1 that gets the right remainder.
+  # * next we want to bring in the 3rd ID, so we take f1 and continually add the second ID until it gets the right
+  #   remainder for the 3rd ID
+  # * to factor in the 4th ID, we then take the new multiplier and continually add LCM(2nd, 3rd) until it matches.
 
   # steps
   # 1) find the offset of each ID number.
