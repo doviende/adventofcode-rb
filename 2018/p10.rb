@@ -1,8 +1,12 @@
 #!/usr/bin/env ruby
+require 'set'
+require "active_support/core_ext/object/blank"
+require 'pry'
+require 'pry-byebug'
 
 class StarField
   class ParseError < StandardError; end
-  StarInitPattern = /^position=<([-0-9]*), *([-0-9]*)> velocity=<([-0-9]*), *([-0-9]*)>$/
+  StarInitPattern = /^position=< *([-0-9]*), *([-0-9]*)> velocity=< *([-0-9]*), *([-0-9]*)>$/
 
   Star = Struct.new(:x, :y, :dx, :dy)
 
@@ -10,6 +14,7 @@ class StarField
     @stars = []
     @xlimit = 100
     @ylimit = 40
+    @total = 0
   end
 
   def add_star(star_text)
@@ -17,37 +22,75 @@ class StarField
     m = StarInitPattern.match(star_text)
     raise ParseError.new("failed to match: #{star_text}") unless m
 
-    @stars.push Star.new(m[1], m[2], m[3], m[4])
+    @stars.push Star.new(*(m[1..4].map(&:to_i)))
   end
 
   def animate
-    advance(10000)
     loop do
-      display
+      # get close to the estimated displayable part
+      dist_x = spread_x - @xlimit
+      dist_y = spread_y - @ylimit
+
+      # advance towards convergence without overshooting.
+      if dist_x > @xlimit
+        advance([dist_x / 100, 1].max)
+      elsif dist_y > @ylimit
+        advance([dist_y / 100, 1].max)
+      else
+        break
+      end
+    end
+
+    # now we're closer, so watch to see when everything gets to its closest point,
+    # and then once they diverge again, go back 1 move and display.
+    @spreads = []
+    loop do
+      @spreads.push spread_x
+      if @spreads.size > 2 && @spreads[-1] > @spreads[-2]
+        advance(-1)
+        puts @stars
+        min_x = @stars.map(&:x).min
+        min_y = @stars.map(&:y).min
+        display(min_x, min_y)
+        break
+      end
       advance(1)
     end
   end
 
+  def spread_x
+    xs = @stars.map(&:x)
+    (xs.max - xs.min).abs
+  end
+
+  def spread_y
+    ys = @stars.map(&:y)
+    (ys.max - ys.min).abs
+  end
+
   def advance(n)
     # move every star by n steps
-    stars.each do |star|
-      star.x = star.x + n*dx
-      star.y = star.y + n*dy
+    @total += n
+    puts "> advance(#{n})"
+    @stars.each do |star|
+      star.x = star.x + n*star.dx
+      star.y = star.y + n*star.dy
     end
   end
 
-  def display
+  def display(offset_x, offset_y)
     # display 100x40 grid
     linehash = {}
     @stars.each do |star|
-      if star.y >= 0 && star.y < @ylimit
+      if star.y >= offset_y && star.y < (@ylimit + offset_y)
         linehash[star.y] ||= [].to_set
-        linehash[star.y].add(star.x) if (star.x >= 0 && star.x < @xlimit)
+        linehash[star.y].add(star.x) if (star.x >= offset_x && star.x < (@xlimit + offset_x))
       end
     end
-    (0..@ylimit-1).each do |y|
+    (offset_y..(@ylimit+offset_y-1)).each do |y|
       line = []
-      (0..@xlimit-1).each do |x|
+      (offset_x..(@xlimit+offset_x-1)).each do |x|
+        linehash[y] ||= [].to_set
         if linehash[y].include? x
           line.push("*")
         else
@@ -56,6 +99,7 @@ class StarField
       end
       puts line.join('')
     end
+    puts "timestamp: #{@total}"
   end
 end
 
