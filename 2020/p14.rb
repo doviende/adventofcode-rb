@@ -1,9 +1,64 @@
 #!/usr/bin/env ruby
 require "active_support/core_ext/object/blank"
 
+class MemoryMachine
+  MemoryAssignmentPattern = /mem\[([0-9]*)\]/
+
+  def initialize
+    @memory = {}
+    @mask_string = nil
+  end
+
+  def set_mask(mask)
+    @mask_string = mask
+    @clear_mask = build_clear_mask(mask)
+    @or_mask = build_or_mask(mask)
+  end
+
+  def parse_line(line)
+    left, right = line.split(' = ')
+    if left == "mask"
+      set_mask(right)
+    else
+      m = MemoryAssignmentPattern.match(left)
+      addr = m[1].to_i
+      value = right.to_i
+      assign(addr, value)
+    end
+  end
+
+  def assign(addr, value)
+    # value must be int
+    @memory[addr] = (value & @clear_mask) | @or_mask
+    puts "addr = #{addr}"
+    puts " value: #{value.to_s(2).rjust(36, '0')}"
+    puts "  mask: #{@mask_string}"
+    puts "result: #{@memory[addr].to_s(2).rjust(36, '0')}"
+  end
+
+  def build_clear_mask(mask)
+    # anything that's not an X should be a 0
+    mask.chars.map { |i| i == "X" ? "1" : "0" }.join("").to_i(2)
+  end
+
+  def build_or_mask(mask)
+    # all Xs should be 0, and the remaining numbers are unchanged.
+    mask.chars.map { |i| i == "X" ? "0" : i }.join("").to_i(2)
+  end
+
+  def sum
+    @memory.values.sum
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
-
+  memory = MemoryMachine.new
+  lines.each do |line|
+    memory.parse_line(line)
+  end
+  part1 = memory.sum
+  puts "in part 1, the sum of all the memory is #{part1}"
 end
 
 __END__
