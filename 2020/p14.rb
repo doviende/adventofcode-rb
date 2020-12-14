@@ -57,6 +57,7 @@ class Version2MemoryMachine < MemoryMachine
     chars = @mask_string.chars
     @num_xes_in_mask = chars.count { |i| i == "X" }
     @mask_x_positions = chars.reverse.map.with_index { |i, idx| i == "X" ? idx : nil }.compact
+    puts "mask x positions: #{@mask_x_positions.join(', ')}"
   end
 
   def build_clear_mask(mask)
@@ -83,7 +84,7 @@ class Version2MemoryMachine < MemoryMachine
     # take the digits from num, fill in the X positions,
     # and then OR the whole thing with addr.
     result = (addr & @clear_mask) | @or_mask
-    @mask_x_positions.each.with_index do |idx, mask_pos|
+    @mask_x_positions.each.with_index do |mask_pos, idx|
       # if num has a 1 at position idx, then fill at mask_pos
       result = result | (((num >> idx) & 1) << mask_pos)
     end
