@@ -59,6 +59,12 @@ class Version2MemoryMachine < MemoryMachine
     @mask_x_positions = chars.reverse.map.with_index { |i, idx| i == "X" ? idx : nil }.compact
   end
 
+  def build_clear_mask(mask)
+    # we want to clear any place that has an X, so those have to be zeros in this mask
+    # everything else has to be 1s to not clear.
+    mask.chars.map { |i| i == "X" ? "0" : "1" }.join("").to_i(2)
+  end
+
   def assign(orig_addr, value)
     # naive way: enumerate the addresses and assign a whole bunch.
     generate_addresses(orig_addr) do |addr|
@@ -68,8 +74,7 @@ class Version2MemoryMachine < MemoryMachine
 
   def generate_addresses(addr)
     (0..(2**@num_xes_in_mask-1)).each do |fillnum|
-      new_addr = mask_fill(addr, fillnum)
-      yield new_addr
+      yield mask_fill(addr, fillnum)
     end
   end
 
@@ -77,29 +82,12 @@ class Version2MemoryMachine < MemoryMachine
     # the mask has Xs at certain positions. we need to
     # take the digits from num, fill in the X positions,
     # and then OR the whole thing with addr.
-    result = addr | @or_mask
+    result = (addr & @clear_mask) | @or_mask
     @mask_x_positions.each.with_index do |idx, mask_pos|
       # if num has a 1 at position idx, then fill at mask_pos
       result = result | (((num >> idx) & 1) << mask_pos)
     end
     result
-  end
-end
-
-class AddrChecker
-  def initialize
-    @hash = {}
-  end
-
-  def add(mask)
-    addr = mask.chars.reject { |i| i == "X" }.join("").to_i(2)
-    @hash[addr] ||= 0
-    @hash[addr] += 1
-  end
-
-  def independent?
-    puts @hash
-    @hash.reject { |k, v| v == 1 }.size == 0
   end
 end
 
@@ -120,6 +108,7 @@ if __FILE__ == $0
   part2 = memory.sum
   puts "in part 2, the sum of all memory is #{part2}"
   # wrong guess: 3590409047696
+  # wrong guess with mask_fill: 53027407342
 end
 
 __END__
