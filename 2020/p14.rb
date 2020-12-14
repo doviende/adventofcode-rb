@@ -52,28 +52,37 @@ class MemoryMachine
 end
 
 class Version2MemoryMachine < MemoryMachine
-  def initialize
-    @sum = 0
-    super
-  end
-
   def set_mask(right)
     super
-    @mask_num_xes = @mask_string.chars.count { |i| i == "X" }
+    chars = @mask_string.chars
+    @num_xes_in_mask = chars.count { |i| i == "X" }
+    @mask_x_positions = chars.reverse.map.with_index { |i, idx| i == "X" ? idx : nil }.compact
   end
 
-  def assign(_addr, value)
+  def assign(orig_addr, value)
     # naive way: enumerate the addresses and assign a whole bunch.
-    # fancy way: if the addresses are all linearly independent, we
-    #   can just add all the assigned things that many times as
-    #   we go.
-    # It turns out the addresses are all independent, so we just need to
-    # add, not assign.
-    @sum += (2 ** @mask_num_xes) * value
+    generate_addresses(orig_addr) do |addr|
+      @memory[addr] = value
+    end
   end
 
-  def sum
-    @sum
+  def generate_addresses(addr)
+    (0..(2**@num_xes_in_mask-1)).each do |fillnum|
+      new_addr = mask_fill(addr, fillnum)
+      yield new_addr
+    end
+  end
+
+  def mask_fill(addr, num)
+    # the mask has Xs at certain positions. we need to
+    # take the digits from num, fill in the X positions,
+    # and then OR the whole thing with addr.
+    result = addr | @or_mask
+    @mask_x_positions.each.with_index do |idx, mask_pos|
+      # if num has a 1 at position idx, then fill at mask_pos
+      result = result | (((num >> idx) & 1) << mask_pos)
+    end
+    result
   end
 end
 
@@ -103,15 +112,6 @@ if __FILE__ == $0
   end
   part1 = memory.sum
   puts "in part 1, the sum of all the memory is #{part1}"
-
-  # check memory addresses to see if they're all linearly independent.
-  addr_checker = AddrChecker.new
-  lines.map { |line| line.split(' = ') }.each do |left, right|
-    next unless left == "mask"
-    addr_checker.add(right)
-  end
-  raise StandardError.new("not independent") unless addr_checker.independent?
-  puts "can do part 2 the efficient way!"
 
   memory = Version2MemoryMachine.new
   lines.each do |line|
