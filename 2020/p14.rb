@@ -51,6 +51,50 @@ class MemoryMachine
   end
 end
 
+class Version2MemoryMachine < MemoryMachine
+  def initialize
+    @sum = 0
+    super
+  end
+
+  def set_mask(right)
+    super
+    @mask_num_xes = @mask_string.chars.count { |i| i == "X" }
+  end
+
+  def assign(_addr, value)
+    # naive way: enumerate the addresses and assign a whole bunch.
+    # fancy way: if the addresses are all linearly independent, we
+    #   can just add all the assigned things that many times as
+    #   we go.
+    # It turns out the addresses are all independent, so we just need to
+    # add, not assign.
+    @sum += (2 ** @mask_num_xes) * value
+  end
+
+  def sum
+    @sum
+  end
+end
+
+class AddrChecker
+  def initialize
+    @hash = {}
+  end
+
+  def add(mask)
+    addr = mask.chars.reject { |i| i == "X" }.join("").to_i(2)
+    @hash[addr] ||= 0
+    @hash[addr] += 1
+  end
+
+  def independent?
+    puts @hash
+    @hash.reject { |k, v| v == 1 }.size == 0
+  end
+end
+
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
   memory = MemoryMachine.new
@@ -59,6 +103,23 @@ if __FILE__ == $0
   end
   part1 = memory.sum
   puts "in part 1, the sum of all the memory is #{part1}"
+
+  # check memory addresses to see if they're all linearly independent.
+  addr_checker = AddrChecker.new
+  lines.map { |line| line.split(' = ') }.each do |left, right|
+    next unless left == "mask"
+    addr_checker.add(right)
+  end
+  raise StandardError.new("not independent") unless addr_checker.independent?
+  puts "can do part 2 the efficient way!"
+
+  memory = Version2MemoryMachine.new
+  lines.each do |line|
+    memory.parse_line(line)
+  end
+  part2 = memory.sum
+  puts "in part 2, the sum of all memory is #{part2}"
+  # wrong guess: 3590409047696
 end
 
 __END__
