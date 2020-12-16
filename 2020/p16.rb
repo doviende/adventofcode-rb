@@ -1,19 +1,73 @@
 #!/usr/bin/env ruby
 require "active_support/core_ext/object/blank"
 
+class Rule
+  attr_reader :name, :ranges
+  def initialize(name, *ranges)
+    @name = name
+    @ranges = ranges # list of lists of 2 elements that are ints.
+  end
+
+  def call(value)
+    ranges.all? { |r| value >= r[0] && value <= r[1] }
+  end
+end
+
 class Input
   # parse input and present the data
-  :attr_reader :rules, :myticket, nearby_tickets
+  attr_reader :rules, :myticket, :nearby_tickets
+
+  # departure location: 33-430 or 456-967
+  RulePattern = /(.*): ([0-9]*)-([0-9]*) or ([0-9]*)-([0-9]*)/
 
   def initialize(lines)
     @lines = lines
-    @rules = nil
+    @rules = nil # must be a list of callables that take an int and return true if allowed
     @myticket = nil
     @nearby_tickets = nil
   end
 
   def parse
-    return self
+    @rules = read_rules
+    @myticket = read_myticket
+    @nearby_tickets = read_nearby_tickets
+    self
+  end
+
+  def read_rules
+    # destructively reads @lines
+    i = 0
+    rules = []
+
+    loop do
+      line = @lines.shift
+      break if line.blank?
+
+      m = RulePattern.match(line)
+      rules.push Rule.new(m[1], [m[2].to_i, m[3].to_i], [m[4].to_i, m[5].to_i])
+      i += 1
+    end
+    rules
+  end
+
+  def read_myticket
+    text = @lines.shift
+    raise StandardError.new("bad input: #{text}") unless text.match(/your ticket:/)
+
+    ticket = @lines.shift.split(",").map(&:to_i)
+    @lines.shift # empty line
+    ticket
+  end
+
+  def read_nearby_tickets
+    text = @lines.shift
+    raise StandardError.new("bad input: #{text}") unless text.match(/nearby tickets:/)
+
+    tickets = []
+    @lines.each do |line|
+      tickets.push line.split(",").map(&:to_i)
+    end
+    tickets
   end
 end
 
@@ -23,7 +77,7 @@ class TicketValueValidator
     @rules = rules
   end
 
-  def each_invalid(ticket)
+  def each_invalid_item(ticket)
     # ticket is list of ints
     # return any that are not valid for any rule
     ticket.each do |value|
@@ -31,7 +85,7 @@ class TicketValueValidator
     end
   end
 
-  def apply_all_rules?(value)
+  def all_rules_pass?(value)
     @rules.all? { |r| r.call(value) }
   end
 end
@@ -45,8 +99,8 @@ if __FILE__ == $0
   # the answer is the sum of the invalid values.
   validator = TicketValueValidator.new(input.rules)
   invalid = []
-  input.nearby_tickets.each do ticket
-    validator.each_invalid(ticket) { |v| invalid.push v }
+  input.nearby_tickets.each do |ticket|
+    validator.each_invalid_item(ticket) { |v| invalid.push v }
   end
   part1 = invalid.sum
   puts "part 1: sum of invalids is #{part1}"
