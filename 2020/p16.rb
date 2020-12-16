@@ -104,6 +104,82 @@ class TicketValueValidator
   end
 end
 
+class FieldDescription
+  attr_reader :valid_rules
+
+  def initialize(rules)
+    @name = nil
+    @valid_rules = rules.dup # array of Rules
+  end
+
+  def eliminate(rule_name)
+    @valid_rules.reject! { |r| r.name == rule_name }
+  end
+
+  def done?
+    return true if @name.present?
+
+    @valid_rules.size == 1
+  end
+
+  def name
+    return nil unless done?
+
+    @name ||= @valid_rules.first.name
+  end
+end
+
+class FieldDescriptionList
+  def initialize(input)
+    @input = input
+    @descriptions = []
+    input.rules.size.times do
+      @descriptions.push FieldDescription.new(input.rules)
+    end
+  end
+
+  def eliminate(rule_name, idx)
+    @descriptions[idx].eliminate(rule_name)
+    if @descriptions[idx].done?
+      process_finished(idx)
+    end
+  end
+
+  def process_finished(idx, done_indexes = nil)
+    done_indexes ||= []
+    done_indexes.push(idx)
+    done_rule = @descriptions[idx].name
+    indent = ">"*done_indexes.size
+    puts "#{indent} field #{idx} is #{done_rule}"
+    @descriptions.each.with_index do |desc, descidx|
+      next if done_indexes.include? descidx
+      desc.eliminate(done_rule)
+      if desc.done?
+        process_finished(descidx, done_indexes)
+      end
+    end
+  end
+
+  def to_s
+    @descriptions.each.with_index do |desc, idx|
+      puts "#{idx}: #{desc.name}"
+    end
+    puts ""
+    puts "Score: #{score}"
+  end
+
+  def score
+    # for all descriptions on my ticket that start with "departure", multiply together.
+    num = 1
+    @descriptions.each.with_index do |desc, idx|
+      if desc.name.match(/departure/)
+        num *= @input.myticket[idx]
+      end
+    end
+    num
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
   input = Input.new(lines).parse
@@ -121,6 +197,43 @@ if __FILE__ == $0
   end
   part1 = invalid.sum
   puts "part 1: sum of invalids is #{part1}"
+  puts ""
+
+  # part 2
+  # In this part, we first throw away all invalid tickets (containing any totally invalid item)
+  # With the remaining tickets (including myticket), the fields are ordered consistently, and
+  # we have to use elimination to figure out which field is which name.
+  # I think this means we need a list of rules that haven't been eliminated for each field.
+  # When the length of a certain field's valid rules is down to 1, then that rule contains the
+  # name of that field. We then remove that rule as a valid rule from all the other fields and repeat.
+  descriptions = FieldDescriptionList.new(input)
+  # find good tickets
+  good_tickets = []
+  input.nearby_tickets.each do |ticket|
+    valid = true
+    validator.each_invalid_item(ticket) do |v|
+      valid = false
+      break
+    end
+    good_tickets.push ticket if valid
+  end
+  good_tickets.push input.myticket
+  # now go through fields in order and determine what rules need to be eliminated because some
+  # member of that field doesn't pass the rule. only 1 field of 1 ticket needs to fail to
+  # disqualify that rule from the field description.
+  good_tickets.each do |ticket|
+    ticket.each.with_index do |item, idx|
+      # try this field value against all rule. if it fails, then we eliminate that Rule
+      # from FieldDescription number idx because this item is in position idx.
+      input.rules.each do |r|
+        next if r.call(item)
+        # r failed on item, so field idx cannot be that rule.
+        descriptions.eliminate(r.name, idx)
+      end
+    end
+  end
+
+  puts descriptions
 end
 
 __END__
