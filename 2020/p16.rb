@@ -6,10 +6,20 @@ class Rule
   def initialize(name, *ranges)
     @name = name
     @ranges = ranges # list of lists of 2 elements that are ints.
+    puts self
+  end
+
+  def to_s
+    "<Rule \"#{@name}\": #{ranges[0].join(' - ')}, #{ranges[1].join(' - ')} >"
   end
 
   def call(value)
-    ranges.all? { |r| value >= r[0] && value <= r[1] }
+    @ranges.each do |range|
+      min = range[0]
+      max = range[1]
+      return true if (value >= min) && (value <= max)
+    end
+    false
   end
 end
 
@@ -81,12 +91,16 @@ class TicketValueValidator
     # ticket is list of ints
     # return any that are not valid for any rule
     ticket.each do |value|
-      yield value unless all_rules_pass?(value)
+      yield value unless any_rule_passes?(value)
     end
   end
 
-  def all_rules_pass?(value)
-    @rules.all? { |r| r.call(value) }
+  def any_rule_passes?(value)
+    @rules.each do |r|
+      return true if r.call(value)
+    end
+    puts "#{value} fails all rules"
+    false
   end
 end
 
@@ -100,7 +114,10 @@ if __FILE__ == $0
   validator = TicketValueValidator.new(input.rules)
   invalid = []
   input.nearby_tickets.each do |ticket|
-    validator.each_invalid_item(ticket) { |v| invalid.push v }
+    validator.each_invalid_item(ticket) do |v|
+      invalid.push v
+      puts "#{v} did not pass any rule"
+    end
   end
   part1 = invalid.sum
   puts "part 1: sum of invalids is #{part1}"
