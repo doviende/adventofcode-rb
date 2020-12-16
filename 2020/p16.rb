@@ -1,9 +1,55 @@
 #!/usr/bin/env ruby
 require "active_support/core_ext/object/blank"
 
+class Input
+  # parse input and present the data
+  :attr_reader :rules, :myticket, nearby_tickets
+
+  def initialize(lines)
+    @lines = lines
+    @rules = nil
+    @myticket = nil
+    @nearby_tickets = nil
+  end
+
+  def parse
+    return self
+  end
+end
+
+class TicketValueValidator
+  def initialize(rules)
+    # rules take an int arg, and return true or false if it is allowed or not.
+    @rules = rules
+  end
+
+  def each_invalid(ticket)
+    # ticket is list of ints
+    # return any that are not valid for any rule
+    ticket.each do |value|
+      yield value unless all_rules_pass?(value)
+    end
+  end
+
+  def apply_all_rules?(value)
+    @rules.all? { |r| r.call(value) }
+  end
+end
+
 if __FILE__ == $0
   lines = DATA.readlines(chomp: true)
+  input = Input.new(lines).parse
 
+  # find any single invalid values within any ticket.
+  # these are the values that are not valid for any rule.
+  # the answer is the sum of the invalid values.
+  validator = TicketValueValidator.new(input.rules)
+  invalid = []
+  input.nearby_tickets.each do ticket
+    validator.each_invalid(ticket) { |v| invalid.push v }
+  end
+  part1 = invalid.sum
+  puts "part 1: sum of invalids is #{part1}"
 end
 
 __END__
